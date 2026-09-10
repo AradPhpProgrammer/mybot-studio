@@ -1,37 +1,20 @@
 {
-  "_meta": {
-    "name": "English",
-    "dir": "ltr",
-    "flag": "US"
-  },
+  "_meta": { "name": "English", "dir": "ltr", "flag": "US" },
   "common": {
     "app_name": "MyBot Studio",
     "version": "v0.1.0",
-    "save": "Save Changes",
-    "saved": "Saved",
-    "saving": "Saving...",
-    "deploy": "Deploy & Run",
-    "delete": "Delete",
-    "cancel": "Cancel",
-    "confirm": "Confirm",
-    "close": "Close",
-    "add": "Add",
-    "settings": "Settings",
-    "fullscreen": "Fullscreen",
-    "search": "Search...",
-    "back": "Back to Profiles",
-    "active": "Active",
-    "inactive": "Inactive",
-    "logout": "Logout",
-    "success": "Success",
-    "error": "Error",
-    "online": "Online",
-    "offline": "Offline"
+    "save": "Save Changes", "saved": "Saved", "saving": "Saving...",
+    "deploy": "Deploy & Run", "delete": "Delete", "cancel": "Cancel",
+    "confirm": "Confirm", "close": "Close", "add": "Add",
+    "settings": "Settings", "fullscreen": "Fullscreen",
+    "search": "Search...", "back": "Back to Profiles",
+    "active": "Active", "inactive": "Inactive",
+    "logout": "Logout", "success": "Success", "error": "Error",
+    "online": "Online", "offline": "Offline",
+    "unsaved": "Unsaved changes", "no_results": "No results found"
   },
   "sidebar": {
-    "profiles": "Profiles",
-    "plugins": "Plugins",
-    "settings": "Settings",
+    "profiles": "Profiles", "plugins": "Plugins", "settings": "Settings",
     "toggle_menu": "Toggle Menu"
   },
   "login": {
@@ -45,7 +28,7 @@
   },
   "settings": {
     "title": "Platform Settings",
-    "subtitle": "Manage credentials, system language, fonts, appearance and Cloudflare proxy",
+    "subtitle": "Manage credentials, language, fonts, theme and Cloudflare proxy",
     "appearance_section": "Appearance & Theme",
     "theme_label": "Interface Theme",
     "theme_dark": "Dark Theme",
@@ -58,7 +41,7 @@
     "language_section": "Language & Localization",
     "select_language": "Active Language",
     "upload_language_title": "Add New Language (.json)",
-    "upload_language_desc": "Upload a translation JSON file to install instantly into the locales directory",
+    "upload_language_desc": "Upload a translation JSON file to install into the locales directory",
     "upload_btn": "Upload Language File",
     "font_section": "Typography & Fonts",
     "select_font": "Active Font",
@@ -77,18 +60,18 @@
     "proxy_mode_selected": "Selected Bots (Per-bot configuration)",
     "proxy_mode_none": "Direct (No proxy)",
     "test_latency_btn": "Test Latency & Connection",
-    "save_proxy_btn": "Save Proxy Settings"
+    "save_proxy_btn": "Save Proxy Settings",
+    "proxy_test_success": "Connection successful ({latency} ms)",
+    "proxy_test_failed": "Connection failed",
+    "proxy_saved": "Proxy settings saved successfully"
   },
   "navbar": {
-    "bots_switch": "Select Bot",
-    "no_bot_selected": "No Bot Selected",
+    "bots_switch": "Select Bot", "no_bot_selected": "No Bot Selected",
     "unsaved_changes": "Unsaved changes",
     "update_available": "New version available",
     "export_json": "Export Flow (JSON)",
     "import_json": "Import Flow (JSON)",
-    "plugins": "Plugins",
-    "language": "Language",
-    "font": "Font"
+    "plugins": "Plugins", "language": "Language", "font": "Font"
   },
   "dashboard": {
     "welcome": "Welcome to MyBot Engine",
@@ -113,66 +96,21 @@
     }
   },
   "nodes": {
-    "trigger_start": {
-      "name": "Start Command (/start)",
-      "desc": "Fires when user presses /start or uses deep link / referral."
-    },
-    "trigger_command": {
-      "name": "Custom Command",
-      "desc": "Fires on slash commands (e.g. /help) and auto-syncs with Telegram menu."
-    },
-    "trigger_callback": {
-      "name": "Button Click (Callback)",
-      "desc": "Fires when user clicks an inline keyboard button."
-    },
-    "trigger_message": {
-      "name": "Message Received",
-      "desc": "Fires on user text message or matching pattern."
-    },
-    "action_send_message": {
-      "name": "Send Message / Media",
-      "desc": "Sends text, photos, videos with styled buttons."
-    },
-    "action_edit_message": {
-      "name": "Edit Message",
-      "desc": "Updates previous message content on callback."
-    },
-    "action_answer_callback": {
-      "name": "Answer Callback (Alert)",
-      "desc": "Dismisses Telegram spinner and displays alert."
-    },
-    "action_condition": {
-      "name": "Branch (If / Else)",
-      "desc": "Branches execution flow based on condition."
-    },
-    "action_set_variable": {
-      "name": "Set User Variable",
-      "desc": "Stores dynamic user state in database."
-    },
-    "math_add": {
-      "name": "Math: Add (+)",
-      "desc": "Adds Input A and Input B, writes result to Output Variable."
-    },
-    "math_subtract": {
-      "name": "Math: Subtract (-)",
-      "desc": "Subtracts Input B from Input A, writes result to Output Variable."
-    },
-    "math_multiply": {
-      "name": "Math: Multiply (*)",
-      "desc": "Multiplies Input A by Input B, writes result to Output Variable."
-    },
-    "math_divide": {
-      "name": "Math: Divide (/)",
-      "desc": "Divides Input A by Input B, writes result to Output Variable."
-    },
-    "action_delay": {
-      "name": "Delay / Wait",
-      "desc": "Waits for specified seconds before proceeding."
-    },
-    "action_http_request": {
-      "name": "HTTP Request / Webhook",
-      "desc": "Sends GET or POST request to external APIs."
-    }
+    "trigger_start": { "name": "Start Command (/start)", "desc": "Fires when user presses /start or uses deep link / referral." },
+    "trigger_command": { "name": "Custom Command", "desc": "Fires on slash commands (e.g. /help) and auto-syncs with Telegram menu." },
+    "trigger_callback": { "name": "Button Click (Callback)", "desc": "Fires when user clicks an inline keyboard button." },
+    "trigger_message": { "name": "Message Received", "desc": "Fires on user text message or matching pattern." },
+    "action_send_message": { "name": "Send Message / Media", "desc": "Sends text, photos, videos with styled buttons." },
+    "action_edit_message": { "name": "Edit Message", "desc": "Updates previous message content on callback." },
+    "action_answer_callback": { "name": "Answer Callback (Alert)", "desc": "Dismisses Telegram spinner and displays alert." },
+    "action_condition": { "name": "Branch (If / Else)", "desc": "Branches execution flow based on condition." },
+    "action_set_variable": { "name": "Set User Variable", "desc": "Stores dynamic user state in database." },
+    "math_add": { "name": "Math: Add (+)", "desc": "Adds Input A and Input B, writes result to Output Variable." },
+    "math_subtract": { "name": "Math: Subtract (-)", "desc": "Subtracts Input B from Input A, writes result to Output Variable." },
+    "math_multiply": { "name": "Math: Multiply (*)", "desc": "Multiplies Input A by Input B, writes result to Output Variable." },
+    "math_divide": { "name": "Math: Divide (/)", "desc": "Divides Input A by Input B, writes result to Output Variable." },
+    "action_delay": { "name": "Delay / Wait", "desc": "Waits for specified seconds before proceeding." },
+    "action_http_request": { "name": "HTTP Request / Webhook", "desc": "Sends GET or POST request to external APIs." }
   },
   "inspector": {
     "title": "Node Inspector & Properties",
@@ -212,12 +150,14 @@
     "clear_chat": "Clear Chat",
     "typing": "Typing...",
     "rich_toolbar": {
-      "bold": "Bold",
-      "italic": "Italic",
-      "spoiler": "Spoiler",
-      "quote": "Expandable Quote",
-      "code": "Code",
-      "table": "Monospace Table"
+      "bold": "Bold", "italic": "Italic", "spoiler": "Spoiler",
+      "quote": "Expandable Quote", "code": "Code", "table": "Monospace Table"
     }
+  },
+  "plugins": {
+    "no_plugins": "No plugins found.",
+    "search_placeholder": "Search plugins...",
+    "activating": "Activating...",
+    "deactivating": "Deactivating..."
   }
 }
