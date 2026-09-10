@@ -31,13 +31,22 @@ async def dispatch_simulation_event(
             db=db
         )
 
+        alerts_list = []
+        for a in result.get("alerts", []):
+            if isinstance(a, dict):
+                alerts_list.append(a.get("text", ""))
+            else:
+                alerts_list.append(str(a))
+
         return SimulatorResponse(
             success=result.get("success", False),
             messages=result.get("messages", []),
-            alerts=[a["text"] for a in result.get("alerts", [])],
+            alerts=alerts_list,
             chat_actions=result.get("chat_actions", []),
             user_state=result.get("user_state", {}),
             logs=[f"Executed steps: {result.get('steps_executed', [])}"]
         )
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

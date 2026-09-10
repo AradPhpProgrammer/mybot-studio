@@ -342,25 +342,58 @@ class DAGRunner:
                 next_handle = "true" if res else "false"
 
             elif ntype == "action_set_variable":
-                var_name = data.get("variable_name", "custom_var")
-                op = data.get("operation", "set")
-                val = data.get("value", 0)
+                var_name = data.get("variable_name", "").strip()
+                if var_name:
+                    op = data.get("operation", "set")
+                    raw_val = render_variables(str(data.get("value", "")), context)
+                    try:
+                        val = float(raw_val) if ("." in raw_val or raw_val.isdigit()) else raw_val
+                    except Exception:
+                        val = raw_val
 
-                current = context["user"].get(var_name, 0)
-                if op == "set":
-                    context["user"][var_name] = val
-                elif op == "add":
-                    try:
-                        context["user"][var_name] = (float(current) if isinstance(current, (int, float)) else 0) + float(val)
-                    except Exception:
+                    current = context["user"].get(var_name, 0)
+                    if op == "set":
                         context["user"][var_name] = val
-                elif op == "subtract":
-                    try:
-                        context["user"][var_name] = (float(current) if isinstance(current, (int, float)) else 0) - float(val)
-                    except Exception:
-                        context["user"][var_name] = 0
-                elif op == "toggle":
-                    context["user"][var_name] = not bool(current)
+                    elif op == "add":
+                        try:
+                            context["user"][var_name] = (float(current) if isinstance(current, (int, float)) else 0) + float(val)
+                        except Exception:
+                            context["user"][var_name] = val
+                    elif op == "subtract":
+                        try:
+                            context["user"][var_name] = (float(current) if isinstance(current, (int, float)) else 0) - float(val)
+                        except Exception:
+                            context["user"][var_name] = 0
+                    elif op == "toggle":
+                        context["user"][var_name] = not bool(current)
+
+            elif ntype in ("math_add", "math_subtract", "math_multiply", "math_divide"):
+                raw_a = render_variables(str(data.get("input_a", 0)), context)
+                raw_b = render_variables(str(data.get("input_b", 0)), context)
+                out_var = data.get("output_variable", "result").strip() or "result"
+                try:
+                    val_a = float(raw_a) if raw_a else 0.0
+                except Exception:
+                    val_a = 0.0
+                try:
+                    val_b = float(raw_b) if raw_b else 0.0
+                except Exception:
+                    val_b = 0.0
+
+                if ntype == "math_add":
+                    calc_res = val_a + val_b
+                elif ntype == "math_subtract":
+                    calc_res = val_a - val_b
+                elif ntype == "math_multiply":
+                    calc_res = val_a * val_b
+                elif ntype == "math_divide":
+                    calc_res = (val_a / val_b) if val_b != 0 else 0.0
+
+                # Store integer if whole number
+                if isinstance(calc_res, float) and calc_res.is_integer():
+                    calc_res = int(calc_res)
+
+                context["user"][out_var] = calc_res
 
             elif ntype == "action_delay":
                 secs = min(max(data.get("seconds", 1), 0), 10)  # Safe bounds

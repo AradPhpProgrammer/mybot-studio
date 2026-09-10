@@ -109,6 +109,15 @@ async def init_db():
                 FOREIGN KEY (bot_id) REFERENCES bots(id) ON DELETE CASCADE
             );
         """)
+
+        # 7. System Settings Table
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS system_settings (
+                key TEXT PRIMARY KEY,
+                value JSON NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
         
         await db.commit()
         logger.info("Database initialized successfully with WAL mode.")

@@ -207,22 +207,6 @@ export default function BotsList({
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-foreground">
-                    {t('dashboard.proxy_optional')}
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="https://your-cf-worker.workers.dev"
-                    value={proxyInput}
-                    onChange={(e) => setProxyInput(e.target.value)}
-                    className="w-full bg-surface-secondary border border-border rounded-xl px-3.5 py-2.5 text-xs text-foreground placeholder:text-field-placeholder outline-none focus:border-accent"
-                  />
-                  <span className="text-[10px] text-muted">
-                    برای دور زدن فیلترینگ تلگرام در ایران، آدرس ورکر کلودفلر خود (مثل andro-cfw) را وارد کنید.
-                  </span>
-                </div>
-
                 {errorMessage && (
                   <div className="p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-xs leading-relaxed">
                     {errorMessage}

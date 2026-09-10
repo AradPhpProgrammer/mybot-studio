@@ -67,7 +67,7 @@ class SimulatorResponse(BaseModel):
     alerts: List[str] = []
     chat_actions: List[str] = []
     user_state: Dict[str, Any] = {}
-    logs: List[Dict[str, Any]] = []
+    logs: List[Any] = []
 
 # Plugins
 class PluginToggleRequest(BaseModel):

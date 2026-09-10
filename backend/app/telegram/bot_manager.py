@@ -32,7 +32,7 @@ STARTER_TEMPLATE_NODES = [
         "position": {"x": 480, "y": 180},
         "data": {
             "media_type": "text",
-            "text": "سلام {first_name}! من ربات MyBot هستم 👋\nپلتفرم خودمیزبان برای طراحی ربات‌های تلگرام بدون کدنویسی.",
+            "text": "Hello {first_name}! Welcome to MyBot Studio.\nVisual no-code platform for Telegram bots.",
             "enable_auto_chat_action": True,
             "expandable_quote": False,
             "has_spoiler": False,
@@ -40,12 +40,12 @@ STARTER_TEMPLATE_NODES = [
             "buttons": [
                 [
                     {
-                        "text": "🚀 درباره پروژه",
+                        "text": "About Project",
                         "callback_data": "btn_about",
                         "style": "primary"
                     },
                     {
-                        "text": "🎁 هدیه خوش‌آمد",
+                        "text": "Claim Welcome Gift",
                         "callback_data": "btn_claim",
                         "style": "success"
                     }
@@ -67,7 +67,7 @@ STARTER_TEMPLATE_NODES = [
         "position": {"x": 480, "y": 460},
         "data": {
             "media_type": "text",
-            "text": "این ربات بر بستر موتور MyBot Engine اجرا می‌شود. شما می‌توانید تمام منوها، دکمه‌ها و منطق آن را از داخل پنل مدیریت به راحتی تغییر دهید.",
+            "text": "This bot is running on MyBot Engine. You can customize all menus, buttons, and logic visually from the studio canvas.",
             "enable_auto_chat_action": True,
             "expandable_quote": True,
             "buttons": []
@@ -96,7 +96,7 @@ STARTER_TEMPLATE_NODES = [
         "type": "action_answer_callback",
         "position": {"x": 860, "y": 700},
         "data": {
-            "text": "🎉 تبریک! ۵۰ سکه هدیه به موجودی شما اضافه شد.",
+            "text": "Congratulations! 50 reward units added to your balance.",
             "show_alert": True
         }
     }
@@ -148,7 +148,7 @@ class BotManager:
         clean_token = token.strip()
         extracted_id = self.parse_token_bot_id(clean_token)
         if not extracted_id:
-            return {"valid": False, "error": "فرمت توکن نامعتبر است. توکن باید به صورت 123456789:ABCdef... باشد."}
+            return {"valid": False, "error": "Invalid token format. Token must be like 123456789:ABCdef..."}
 
         session = self.get_api_session(cf_worker_url, proxy_url)
         bot = Bot(token=clean_token, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
@@ -165,9 +165,8 @@ class BotManager:
             }
         except Exception as e:
             err_str = str(e)
-            logger.warning(f"Live token check with Telegram failed ({err_str}). Using offline/proxy fallback for ID {extracted_id}.")
+            logger.warning(f"Live token check with Telegram failed ({err_str}). Using offline fallback for ID {extracted_id}.")
             
-            # If network error (such as Iran's 10.10.34.35 sinkhole or timeout), return valid with fallback metadata
             return {
                 "valid": True,
                 "id": extracted_id,
@@ -176,7 +175,7 @@ class BotManager:
                 "can_join_groups": True,
                 "can_read_all_group_messages": False,
                 "is_online_verified": False,
-                "network_warning": "ارتباط مستقیم با سرور تلگرام به دلیل محدودیت شبکه برقرار نشد، اما پروفایل ربات با موفقیت ساخته شد. در صورت نیاز از ورکر کلودفلر یا پراکسی در تنظیمات استفاده کنید."
+                "network_warning": "Telegram connection was not reached directly. Bot profile created with ID. You can configure Cloudflare Tunnel (andro-cfw) in Settings."
             }
         finally:
             await bot.session.close()
@@ -199,7 +198,7 @@ class BotManager:
             "typing_delay_ms": 400,
             "cf_worker_url": cf_worker_url or "",
             "custom_proxy": custom_proxy or "",
-            "default_language": "fa",
+            "default_language": "en",
             "sync_commands_automatically": True,
             "is_online_verified": verif.get("is_online_verified", False)
         }
@@ -260,7 +259,7 @@ class BotManager:
         for n in nodes:
             if n.get("type") == "trigger_command":
                 raw_cmd = n.get("data", {}).get("command", "").lstrip("/").strip()
-                desc = n.get("data", {}).get("description", "دستور ربات").strip()
+                desc = n.get("data", {}).get("description", "Bot Command").strip()
                 if raw_cmd:
                     tg_commands.append(types.BotCommand(command=raw_cmd, description=desc))
 

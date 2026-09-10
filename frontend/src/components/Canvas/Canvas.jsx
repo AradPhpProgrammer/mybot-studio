@@ -1,18 +1,16 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   ReactFlow,
   Background,
   Controls,
-  MiniMap,
-  addEdge,
-  useNodesState,
-  useEdgesState
+  MiniMap
 } from '@xyflow/react';
 
 import TriggerNode from '../Nodes/TriggerNode';
 import MessageNode from '../Nodes/MessageNode';
 import ConditionNode from '../Nodes/ConditionNode';
 import ActionNode from '../Nodes/ActionNode';
+import MathNode from '../Nodes/MathNode';
 
 export default function Canvas({
   nodes,
@@ -33,9 +31,19 @@ export default function Canvas({
     action_edit_message: MessageNode,
     action_condition: ConditionNode,
     action_set_variable: ActionNode,
+    math_add: MathNode,
+    math_subtract: MathNode,
+    math_multiply: MathNode,
+    math_divide: MathNode,
     action_delay: ActionNode,
     action_http_request: ActionNode,
     action_answer_callback: ActionNode
+  }), []);
+
+  // Custom edge style for crisp n8n wires
+  const defaultEdgeOptions = useMemo(() => ({
+    animated: true,
+    style: { stroke: 'var(--accent, #3b82f6)', strokeWidth: 2.5 }
   }), []);
 
   return (
@@ -48,15 +56,19 @@ export default function Canvas({
         onConnect={onConnect}
         onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
+        defaultEdgeOptions={defaultEdgeOptions}
+        deleteKeyCode={['Backspace', 'Delete']}
+        edgesFocusable={true}
+        nodesFocusable={true}
         fitView
         snapToGrid
         snapGrid={[15, 15]}
-        className="bg-background"
+        className={theme === 'dark' ? 'dark-canvas' : 'light-canvas'}
         minZoom={0.2}
         maxZoom={2.5}
       >
         <Background 
-          color={theme === 'dark' ? '#26334a' : '#d1d5db'} 
+          color={theme === 'dark' ? '#26334a' : '#cbd5e1'} 
           gap={18} 
           size={2} 
         />
@@ -65,8 +77,8 @@ export default function Canvas({
         />
         <MiniMap 
           className="!bg-surface/90 !border-border !rounded-xl !shadow-lg !overflow-hidden"
-          nodeColor={() => (theme === 'dark' ? '#444' : '#ccc')}
-          maskColor={theme === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)'}
+          nodeColor={() => (theme === 'dark' ? '#334155' : '#cbd5e1')}
+          maskColor={theme === 'dark' ? 'rgba(10,15,24,0.75)' : 'rgba(255,255,255,0.75)'}
         />
       </ReactFlow>
     </div>
