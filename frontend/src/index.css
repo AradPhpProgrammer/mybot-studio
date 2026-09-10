@@ -1,137 +1,122 @@
-@import '@xyflow/react/dist/style.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@import '@xyflow/react/dist/style.css';
+
+/* Base Theme Variables */
 :root,
 .light,
 .default,
 [data-theme="light"],
 [data-theme="default"] {
-  /* theme colors (light mode) */
-  --accent: oklch(0 0 0);
-  --accent-foreground: oklch(99.11% 0 0);
-  --background: oklch(97.02% 0.0000 0.00);
-  --border: oklch(90.00% 0.0000 0.00);
-  --danger: oklch(0.573 0.2249 21.97);
-  --danger-foreground: oklch(98% 0.0200 21.97);
-  --default: oklch(94.00% 0.0000 0.00);
-  --default-foreground: oklch(21.03% 0.0059 0.00);
-  --field-background: oklch(100.00% 0.0000 0.00);
+  --accent: oklch(0.55 0.2 260);
+  --accent-foreground: oklch(99% 0 0);
+  --background: oklch(98% 0 0);
+  --border: oklch(90% 0 0);
+  --danger: oklch(0.6 0.22 20);
+  --danger-foreground: oklch(98% 0.02 20);
+  --default: oklch(94% 0 0);
+  --default-foreground: oklch(21% 0.006 0);
+  --field-background: oklch(100% 0 0);
   --field-border: transparent;
-  --field-foreground: oklch(21.03% 0.0000 0.00);
-  --field-placeholder: oklch(55.17% 0.0000 0.00);
-  --focus: oklch(0 0 0);
-  --foreground: oklch(21.03% 0.0000 0.00);
-  --muted: oklch(55.17% 0.0000 0.00);
-  --overlay: oklch(100.00% 0.0000 0.00);
-  --overlay-foreground: oklch(21.03% 0.0000 0.00);
-  --scrollbar: oklch(87.10% 0.0000 0.00);
-  --segment: oklch(100.00% 0.0000 0.00);
-  --segment-foreground: oklch(21.03% 0.0000 0.00);
-  --separator: oklch(92.00% 0.0000 0.00);
-  --success: oklch(0.6277 0.1604 153.06);
-  --success-foreground: oklch(98% 0.0160 153.06);
-  --surface: oklch(100.00% 0.0000 0.00);
-  --surface-foreground: oklch(21.03% 0.0000 0.00);
-  --surface-secondary: oklch(95.24% 0.0000 0.00);
-  --surface-secondary-foreground: oklch(21.03% 0.0000 0.00);
-  --surface-tertiary: oklch(93.73% 0.0000 0.00);
-  --surface-tertiary-foreground: oklch(21.03% 0.0000 0.00);
-  --warning: oklch(0.8446 0.1525 80.6);
-  --warning-foreground: oklch(15% 0.0457 80.60);
-  --accent-soft-foreground: oklch(0 0 0);
-
-  /* border radius */
-  --radius: 0.375rem;
+  --field-foreground: oklch(21% 0 0);
+  --field-placeholder: oklch(55% 0 0);
+  --focus: oklch(0.55 0.2 260);
+  --foreground: oklch(21% 0 0);
+  --muted: oklch(55% 0 0);
+  --overlay: oklch(100% 0 0);
+  --overlay-foreground: oklch(21% 0 0);
+  --scrollbar: oklch(87% 0 0);
+  --segment: oklch(100% 0 0);
+  --segment-foreground: oklch(21% 0 0);
+  --separator: oklch(92% 0 0);
+  --success: oklch(0.63 0.16 153);
+  --success-foreground: oklch(98% 0.016 153);
+  --surface: oklch(100% 0 0);
+  --surface-foreground: oklch(21% 0 0);
+  --surface-secondary: oklch(95% 0 0);
+  --surface-secondary-foreground: oklch(21% 0 0);
+  --surface-tertiary: oklch(94% 0 0);
+  --surface-tertiary-foreground: oklch(21% 0 0);
+  --warning: oklch(0.84 0.15 80);
+  --warning-foreground: oklch(15% 0.046 80.6);
+  --radius: 0.5rem;
   --field-radius: 0.375rem;
-
-  /* font family */
-  --font-sans: 'Vazirmatn', 'Inter', -apple-system, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .dark,
 [data-theme="dark"] {
   color-scheme: dark;
-  /* theme colors (dark mode) */
-  --accent: oklch(0.9848 0 0);
-  --accent-foreground: oklch(15% 0.0000 0.00);
-  --background: oklch(12.00% 0.0000 0.00);
-  --border: oklch(28.00% 0.0000 0.00);
-  --danger: oklch(0.7044 0.1872 23.19);
-  --danger-foreground: oklch(15% 0.0500 23.19);
-  --default: oklch(27.40% 0.0000 0.00);
-  --default-foreground: oklch(99.11% 0 0);
-  --field-background: oklch(21.03% 0.0000 0.00);
+  --accent: oklch(0.65 0.22 260);
+  --accent-foreground: oklch(15% 0 0);
+  --background: oklch(10% 0 0);
+  --border: oklch(25% 0 0);
+  --danger: oklch(0.65 0.22 20);
+  --danger-foreground: oklch(15% 0.05 20);
+  --default: oklch(25% 0 0);
+  --default-foreground: oklch(99% 0 0);
+  --field-background: oklch(18% 0 0);
   --field-border: transparent;
-  --field-foreground: oklch(99.11% 0.0000 0.00);
-  --field-placeholder: oklch(70.50% 0.0000 0.00);
-  --focus: oklch(0.9848 0 0);
-  --foreground: oklch(99.11% 0.0000 0.00);
-  --muted: oklch(70.50% 0.0000 0.00);
-  --overlay: oklch(21.03% 0.0000 0.00);
-  --overlay-foreground: oklch(99.11% 0.0000 0.00);
-  --scrollbar: oklch(70.50% 0.0000 0.00);
-  --segment: oklch(39.64% 0.0000 0.00);
-  --segment-foreground: oklch(99.11% 0.0000 0.00);
-  --separator: oklch(25.00% 0.0000 0.00);
-  --success: oklch(0.6514 0.1321 156.22);
-  --success-foreground: oklch(15% 0.0396 156.22);
-  --surface: oklch(21.03% 0.0000 0.00);
-  --surface-foreground: oklch(99.11% 0.0000 0.00);
-  --surface-secondary: oklch(25.70% 0.0000 0.00);
-  --surface-secondary-foreground: oklch(99.11% 0.0000 0.00);
-  --surface-tertiary: oklch(27.21% 0.0000 0.00);
-  --surface-tertiary-foreground: oklch(99.11% 0.0000 0.00);
-  --warning: oklch(0.8803 0.1348 86.06);
-  --warning-foreground: oklch(15% 0.0404 86.06);
-  --accent-soft-foreground: oklch(0.9848 0 0);
+  --field-foreground: oklch(99% 0 0);
+  --field-placeholder: oklch(65% 0 0);
+  --focus: oklch(0.65 0.22 260);
+  --foreground: oklch(99% 0 0);
+  --muted: oklch(65% 0 0);
+  --overlay: oklch(18% 0 0);
+  --overlay-foreground: oklch(99% 0 0);
+  --scrollbar: oklch(65% 0 0);
+  --segment: oklch(35% 0 0);
+  --segment-foreground: oklch(99% 0 0);
+  --separator: oklch(22% 0 0);
+  --success: oklch(0.65 0.14 155);
+  --success-foreground: oklch(15% 0.04 155);
+  --surface: oklch(15% 0 0);
+  --surface-foreground: oklch(99% 0 0);
+  --surface-secondary: oklch(20% 0 0);
+  --surface-secondary-foreground: oklch(99% 0 0);
+  --surface-tertiary: oklch(23% 0 0);
+  --surface-tertiary-foreground: oklch(99% 0 0);
+  --warning: oklch(0.85 0.14 85);
+  --warning-foreground: oklch(15% 0.04 85);
+  --radius: 0.5rem;
+  --field-radius: 0.375rem;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 body {
   font-family: var(--font-sans);
   user-select: none;
+  background: var(--background);
+  color: var(--foreground);
 }
 
 /* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--muted);
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
-/* ReactFlow canvas overrides */
-.react-flow__background {
-  background-color: var(--background);
-}
-.react-flow__node {
-  cursor: grab;
-}
-.react-flow__node:active {
-  cursor: grabbing;
-}
-.react-flow__edge-path {
-  stroke: var(--border);
-  stroke-width: 2.5;
-}
-.react-flow__edge.selected .react-flow__edge-path {
-  stroke: var(--accent);
-}
-.react-flow__handle {
-  background: var(--muted);
-  border: 2px solid var(--surface);
-  width: 10px;
-  height: 10px;
-}
-.react-flow__handle:hover {
-  background: var(--accent);
-}
+/* ReactFlow Overrides */
+.react-flow__node { cursor: grab; }
+.react-flow__node:active { cursor: grabbing; }
+.react-flow__edge-path { stroke: var(--accent); stroke-width: 2.5; }
+.react-flow__handle { background: var(--muted); border: 2px solid var(--surface); width: 10px; height: 10px; transition: all 0.2s ease; }
+.react-flow__handle:hover, .react-flow__handle-connecting { background: var(--accent); transform: scale(1.2); }
+.react-flow__edges { pointer-events: all; }
+.react-flow__edge { pointer-events: stroke; cursor: pointer; }
+.react-flow__edge.selected .react-flow__edge-path { stroke: var(--danger); stroke-width: 3; }
+
+/* Canvas Themes */
+.dark-canvas .react-flow__background { background-color: #1a1f2e; }
+.light-canvas .react-flow__background { background-color: #e8eaf0; }
+
+/* Glassmorphism Utilities */
+.glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+.dark .glass { background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.08); }
+.light .glass { background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255, 255, 255, 0.5); }
+
+/* Node Styles for Dark/Light Consistency */
+[data-theme="light"] .react-flow__node { background: var(--surface); color: var(--foreground); }
+[data-theme="dark"] .react-flow__node { background: var(--surface); color: var(--foreground); }

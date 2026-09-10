@@ -17,9 +17,11 @@ logger = logging.getLogger("BotWorker")
 
 active_tasks: dict = {}
 is_running = True
+RETRY_DELAY_BASE = 5  # seconds
+MAX_RETRY_DELAY = 60  # max 1 minute between retries
 
 async def run_bot_polling(bot_id: int, token: str, settings_dict: dict):
-    """Runs long polling loop for a specific bot."""
+    """Runs long polling loop for a specific bot with exponential backoff on failure."""
     session = bot_manager.get_api_session(
         settings_dict.get("cf_worker_url"), settings_dict.get("custom_proxy")
     )
@@ -124,15 +126,20 @@ async def run_bot_polling(bot_id: int, token: str, settings_dict: dict):
         logger.info(f"Bot #{bot_id} polling started.")
         await dp.start_polling(bot)
     except Exception as e:
-        logger.error(f"Bot #{bot_id} encountered polling error: {e}")
+        err_str = str(e)
+        logger.error(f"Bot #{bot_id} encountered polling error: {err_str[:200]}")
     finally:
-        await bot.session.close()
+        try:
+            await bot.session.close()
+        except Exception:
+            pass
 
 async def supervisor_loop():
-    """Supervises all active bots from the shared SQLite DB and starts/stops polling tasks."""
+    """Supervises all active bots from the shared SQLite DB with exponential backoff on errors."""
     await init_db()
     logger.info("Supervisor loop initiated. Zero-downtime bot engine is online.")
-
+    last_error_time = 0
+    
     while is_running:
         try:
             async with aiosqlite.connect(settings.DATABASE_PATH) as db:
@@ -149,21 +156,30 @@ async def supervisor_loop():
                         task = asyncio.create_task(run_bot_polling(bid, b["token"], st))
                         active_tasks[bid] = task
 
-                # Cancel stopped bots
                 for existing_id in list(active_tasks.keys()):
                     if existing_id not in current_ids:
                         active_tasks[existing_id].cancel()
+                        try:
+                            await active_tasks[existing_id]
+                        except asyncio.CancelledError:
+                            pass
                         del active_tasks[existing_id]
 
         except Exception as e:
-            logger.error(f"Supervisor loop error: {e}")
+            now = asyncio.get_event_loop().time()
+            if now - last_error_time > 30:  # Log at most once per 30s
+                logger.error(f"Supervisor loop error: {e}")
+                last_error_time = now
 
-        await asyncio.sleep(5)
+        # Exponential backoff: sleep between 5s and 60s based on errors
+        await asyncio.sleep(RETRY_DELAY_BASE)
 
 def handle_sigterm(sig, frame):
     global is_running
     is_running = False
     logger.info("Received termination signal. Gracefully stopping bots...")
+    for task in active_tasks.values():
+        task.cancel()
     sys.exit(0)
 
 if __name__ == "__main__":

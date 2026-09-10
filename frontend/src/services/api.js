@@ -167,5 +167,25 @@ export const api = {
   async triggerUpdate() {
     const res = await fetch(`${API_BASE}/system/update`, { method: 'POST' });
     return res.json();
+  },
+  async getProxyConfig() {
+    const res = await fetch(`${API_BASE}/system/proxy`);
+    return res.json();
+  },
+  async saveProxyConfig(config) {
+    const res = await fetch(`${API_BASE}/system/proxy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config)
+    });
+    return res.json();
+  },
+  async testProxy(config) {
+    const res = await fetch(`${API_BASE}/system/proxy/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config)
+    });
+    return res.json();
   }
 };
