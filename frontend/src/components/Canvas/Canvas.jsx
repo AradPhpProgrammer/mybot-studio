@@ -56,9 +56,9 @@ export default function Canvas({
         maxZoom={2.5}
       >
         <Background 
-          color={theme === 'dark' ? '#333333' : '#e0e0e0'} 
-          gap={20} 
-          size={1.5} 
+          color={theme === 'dark' ? '#26334a' : '#d1d5db'} 
+          gap={18} 
+          size={2} 
         />
         <Controls 
           className="!bg-surface !border-border !rounded-xl !shadow-lg !overflow-hidden [&>button]:!bg-surface [&>button]:!border-border [&>button]:!text-foreground"

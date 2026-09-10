@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../../locales/i18n';
 import { api } from '../../services/api';
+import NanoGridCanvas from '../Visuals/NanoGridCanvas';
 
 export default function BotsList({
   bots,
@@ -60,9 +61,9 @@ export default function BotsList({
   };
 
   return (
-    <div className="w-full flex-1 overflow-y-auto p-8 bg-background flex flex-col items-center justify-start relative">
-      {/* Background ambient lighting */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-accent/5 rounded-full blur-3xl pointer-events-none" />
+    <div className="w-full flex-1 overflow-y-auto p-8 bg-[#090d16] flex flex-col items-center justify-start relative">
+      {/* Animated connected Nano-grid Canvas */}
+      <NanoGridCanvas />
 
       {/* Header */}
       <div className="text-center max-w-lg mb-8 z-10 space-y-2">

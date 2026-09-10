@@ -41,15 +41,26 @@ if not exist ".env" (
     ) > .env
 )
 
-REM 4. Setup Python VirtualEnv
+REM 4. Setup Python VirtualEnv using uv (fast and avoids SSL/pip issues)
 if not exist "backend\.venv" (
     echo [1/4] Creating Python virtual environment...
-    python -m venv backend\.venv
+    where uv >nul 2>&1
+    if %errorlevel% equ 0 (
+        uv venv backend\.venv
+    ) else (
+        python -m venv backend\.venv
+    )
 )
 
 echo [2/4] Installing backend dependencies...
-call backend\.venv\Scripts\activate.bat
-pip install -q -r backend\requirements.txt
+where uv >nul 2>&1
+if %errorlevel% equ 0 (
+    uv pip install -r backend\requirements.txt --python backend\.venv\Scripts\python.exe
+) else (
+    call backend\.venv\Scripts\activate.bat
+    python -m pip install --upgrade pip
+    pip install -r backend\requirements.txt
+)
 
 REM 5. Setup Frontend
 if not exist "frontend\node_modules" (
@@ -59,6 +70,7 @@ if not exist "frontend\node_modules" (
     cd ..
 )
 
+echo.
 echo [4/4] Launching services...
 echo.
 echo ==============================================================================
