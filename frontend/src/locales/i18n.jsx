@@ -4,17 +4,17 @@ import en from './en.json';
 import ru from './ru.json';
 import ar from './ar.json';
 
-const BUNDLED_LOCALES = { fa, en, ru, ar };
+const BUNDLED_LOCALES = { en, fa, ru, ar };
 
 const I18nContext = createContext(null);
 
 export function I18nProvider({ children }) {
-  const [lang, setLang] = useState(() => localStorage.getItem('mybot_lang') || 'fa');
-  const [translations, setTranslations] = useState(BUNDLED_LOCALES[lang] || fa);
+  const [lang, setLang] = useState(() => localStorage.getItem('mybot_lang') || 'en');
+  const [translations, setTranslations] = useState(BUNDLED_LOCALES[lang] || en);
 
   useEffect(() => {
     localStorage.setItem('mybot_lang', lang);
-    const selected = BUNDLED_LOCALES[lang] || fa;
+    const selected = BUNDLED_LOCALES[lang] || en;
     setTranslations(selected);
     const dir = selected._meta?.dir || 'ltr';
     document.documentElement.setAttribute('dir', dir);

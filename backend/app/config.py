@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     
     # Admin Credentials (Default on first launch)
     DEFAULT_ADMIN_USER: str = os.getenv("DEFAULT_ADMIN_USER", "admin")
-    DEFAULT_ADMIN_PASS: str = os.getenv("DEFAULT_ADMIN_PASS", "admin123456")
+    DEFAULT_ADMIN_PASS: str = os.getenv("DEFAULT_ADMIN_PASS", "admin1234")
     
     # Telegram & Network Proxies
     CF_PROXY_URL: str = os.getenv("CF_PROXY_URL", "")  # e.g., https://your-worker.workers.dev

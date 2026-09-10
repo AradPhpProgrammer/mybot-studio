@@ -22,6 +22,15 @@
 
 ---
 
+## 🔑 Default Admin Credentials
+
+When running for the first time:
+- **Username:** `admin`
+- **Password:** `admin1234`
+- *You can change your username and password at any time directly in the **Settings** tab.*
+
+---
+
 ## ✨ Key Capabilities
 
 1. **⚡ Unreal Engine & n8n Style Infinite Canvas:**
@@ -45,39 +54,12 @@
    - **Admin Plugins:** Add dashboard tools (e.g., Broadcast tool with 30 msgs/sec rate-limiting).
 
 6. **🌐 1-File Internationalization (i18n) & Font System:**
-   - Add any new language simply by dropping a `.json` file in `locales/`.
-   - Add any custom font with 1-click `.woff2` / `.ttf` upload.
+   - Default English (🇺🇸) interface with instant switching to Persian (🇮🇷), Russian (🇷🇺), and Arabic (🇸🇦).
+   - Add any new language simply by dropping a `.json` file in `locales/` or uploading via Settings.
+   - Add any custom font with 1-click `.woff2` / `.ttf` upload or Google Fonts CDN link.
 
 7. **🛡️ Censorship-Resistant (Cloudflare Worker & SOCKS5 Proxy):**
    - Direct integration with Cloudflare reverse proxies (e.g., `andro-cfw`) and local proxies for restricted network environments (such as Iran).
-
----
-
-## 🏗️ Architecture
-
-```
-                    ┌─────────────────────────┐
-                    │  MyBot Studio (React)   │
-                    │  ReactFlow + HeroUI OKLCH│
-                    └────────────┬────────────┘
-                                 │ REST API & Simulator Events
-                                 ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 Panel Backend (FastAPI)                     │
-│    Auth • Flow CRUD • Node Catalog • Updates • Plugins      │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-                  Shared SQLite DB (WAL Mode)
-                  /app/data/mybot.db (JSON NoSQL)
-                             │
-┌────────────────────────────┴────────────────────────────────┐
-│           Zero-Downtime Bot Engine (Aiogram 3.x)            │
-│  24/7 Supervisor • DAG Interpreter • Auto Chat Action       │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-                             ▼
-                   Telegram Bot API 9.4+
-```
 
 ---
 

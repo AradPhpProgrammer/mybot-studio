@@ -20,7 +20,47 @@
     "search": "جستجو...",
     "back": "بازگشت",
     "active": "فعال",
-    "inactive": "غیرفعال"
+    "inactive": "غیرفعال",
+    "logout": "خروج",
+    "success": "موفقیت‌آمیز",
+    "error": "خطا"
+  },
+  "sidebar": {
+    "profiles": "پروفایل‌ها",
+    "plugins": "پلاگین‌ها",
+    "settings": "تنظیمات"
+  },
+  "login": {
+    "title": "ورود به مای‌بات استودیو",
+    "subtitle": "برای دسترسی به ربات‌ها و جریان‌ها وارد شوید",
+    "username_label": "نام کاربری",
+    "password_label": "رمز عبور",
+    "login_btn": "ورود به پنل",
+    "default_hint": "اطلاعات ورود پیش‌فرض: admin / admin1234",
+    "logging_in": "در حال ورود..."
+  },
+  "settings": {
+    "title": "تنظیمات پلتفرم",
+    "subtitle": "مدیریت مشخصات ادمین، زبان سیستم، فونت‌ها و پراکسی شبکه",
+    "credentials_section": "تغییر نام کاربری و رمز عبور",
+    "current_password": "رمز عبور فعلی",
+    "new_username": "نام کاربری جدید",
+    "new_password": "رمز عبور جدید",
+    "save_credentials_btn": "بروزرسانی مشخصات ورود",
+    "language_section": "زبان و بومی‌سازی",
+    "select_language": "زبان فعال سیستم",
+    "upload_language_title": "افزودن زبان جدید (فایل .json)",
+    "upload_language_desc": "آپلود مستقیم فایل ترجمه JSON به پوشه زبان‌های سرور",
+    "upload_btn": "آپلود فایل زبان",
+    "font_section": "تایپوگرافی و فونت‌ها",
+    "select_font": "فونت فعال محیط",
+    "add_font_title": "افزودن فونت دلخواه (CDN یا فایل)",
+    "font_name_placeholder": "نام فونت (مثلا Vazirmatn)",
+    "font_cdn_placeholder": "https://fonts.googleapis.com/css2?family=...&display=swap",
+    "add_font_btn": "ثبت فونت",
+    "proxy_section": "تنظیمات ریورس‌پروکسی تلگرام",
+    "cf_worker_label": "آدرس ورکر کلودفلر (andro-cfw)",
+    "http_proxy_label": "آدرس پراکسی SOCKS5 یا HTTP"
   },
   "navbar": {
     "bots_switch": "انتخاب ربات",

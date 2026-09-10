@@ -1,6 +1,36 @@
 const API_BASE = '/api';
 
 export const api = {
+  // Auth
+  async login(username, password) {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Invalid username or password');
+    }
+    return res.json();
+  },
+  async changeCredentials(currentPassword, newUsername, newPassword) {
+    const res = await fetch(`${API_BASE}/auth/change-credentials`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_username: newUsername,
+        new_password: newPassword
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to update credentials');
+    }
+    return res.json();
+  },
+
   // Bots
   async getBots() {
     const res = await fetch(`${API_BASE}/bots`);
@@ -99,6 +129,29 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ plugin_key: pluginKey, is_active: isActive })
     });
+    return res.json();
+  },
+
+  // Languages & Fonts
+  async getLanguages() {
+    const res = await fetch(`${API_BASE}/i18n/languages`);
+    return res.json();
+  },
+  async uploadLanguage(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${API_BASE}/i18n/upload`, {
+      method: 'POST',
+      body: formData
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Language upload failed');
+    }
+    return res.json();
+  },
+  async getFonts() {
+    const res = await fetch(`${API_BASE}/fonts`);
     return res.json();
   },
 

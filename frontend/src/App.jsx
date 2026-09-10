@@ -7,11 +7,15 @@ import {
   useEdgesState
 } from '@xyflow/react';
 
+import LoginPage from './components/Auth/LoginPage';
+import Sidebar from './components/Sidebar/Sidebar';
+import SettingsView from './components/Settings/SettingsView';
+import PluginsView from './components/Plugins/PluginsView';
+import BotsList from './components/Dashboard/BotsList';
 import Navbar from './components/Header/Navbar';
 import Canvas from './components/Canvas/Canvas';
 import QuickSearchPalette from './components/QuickSearch/QuickSearchPalette';
 import TelegramMockup from './components/Mockup/TelegramMockup';
-import BotsList from './components/Dashboard/BotsList';
 import PluginsModal from './components/Plugins/PluginsModal';
 
 import { useI18n } from './locales/i18n';
@@ -22,26 +26,31 @@ export default function App() {
   const { t } = useI18n();
   const [theme, setTheme] = useState(() => localStorage.getItem('mybot_theme') || 'dark');
   
-  // Navigation & Bot State
+  // Auth state
+  const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('mybot_token'));
+
+  // Navigation state
   const [view, setView] = useState('dashboard'); // 'dashboard' or 'studio'
+  const [sidebarTab, setSidebarTab] = useState('profiles'); // 'profiles', 'plugins', 'settings'
+
+  // Bot & Flow State
   const [bots, setBots] = useState([]);
   const [currentBot, setCurrentBot] = useState(null);
   const [loadingBots, setLoadingBots] = useState(true);
 
-  // Flow State
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Modals & UI States
+  // Modals & Overlays
   const [quickSearchOpen, setQuickSearchOpen] = useState(false);
   const [quickSearchPos, setQuickSearchPos] = useState({ x: 200, y: 200 });
   const [pluginsModalOpen, setPluginsModalOpen] = useState(false);
   const [updateInfo, setUpdateInfo] = useState(null);
 
-  // Apply Theme
+  // Theme application
   useEffect(() => {
     localStorage.setItem('mybot_theme', theme);
     document.documentElement.setAttribute('data-theme', theme);
@@ -54,8 +63,9 @@ export default function App() {
     }
   }, [theme]);
 
-  // Load Bots on mount
+  // Load Bots on mount or auth change
   const loadBots = useCallback(async () => {
+    if (!isAuthenticated) return;
     try {
       setLoadingBots(true);
       const list = await api.getBots();
@@ -65,13 +75,14 @@ export default function App() {
     } finally {
       setLoadingBots(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    loadBots();
-    // Check update
-    api.checkUpdate().then(setUpdateInfo).catch(() => {});
-  }, [loadBots]);
+    if (isAuthenticated) {
+      loadBots();
+      api.checkUpdate().then(setUpdateInfo).catch(() => {});
+    }
+  }, [isAuthenticated, loadBots]);
 
   // Load Bot Flow
   const loadBotFlow = useCallback(async (botId) => {
@@ -98,7 +109,12 @@ export default function App() {
     loadBots();
   };
 
-  // Node & Edge Changes
+  const handleLogout = () => {
+    localStorage.removeItem('mybot_token');
+    setIsAuthenticated(false);
+  };
+
+  // Node & Edge Handlers
   const handleNodesChange = useCallback(
     (changes) => {
       onNodesChange(changes);
@@ -188,7 +204,7 @@ export default function App() {
     }
   };
 
-  // Add Node from Quick Search
+  // Quick Search Add Node
   const handleAddNode = (def) => {
     const newNode = {
       id: `node_${Date.now()}`,
@@ -201,13 +217,18 @@ export default function App() {
     setIsDirty(true);
   };
 
-  // Keyboard Shortcuts (Space for quick search, Ctrl+S for save)
+  // Keyboard Shortcuts (Ctrl+S for save, Space for quick search)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         handleSaveFlow();
-      } else if (e.code === 'Space' && view === 'studio' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+      } else if (
+        e.code === 'Space' && 
+        view === 'studio' && 
+        document.activeElement.tagName !== 'INPUT' && 
+        document.activeElement.tagName !== 'TEXTAREA'
+      ) {
         e.preventDefault();
         setQuickSearchPos({ x: window.innerWidth / 2 - 100, y: window.innerHeight / 2 - 100 });
         setQuickSearchOpen(true);
@@ -230,16 +251,39 @@ export default function App() {
     }
   };
 
+  // 1. Not Logged In -> Show Login Page
+  if (!isAuthenticated) {
+    return <LoginPage onLoginSuccess={() => setIsAuthenticated(true)} />;
+  }
+
+  // 2. Logged In -> Dashboard or Studio
   return (
-    <div className="w-screen h-screen overflow-hidden bg-background text-foreground font-sans">
+    <div className="w-screen h-screen overflow-hidden bg-background text-foreground font-sans flex">
       {view === 'dashboard' ? (
-        <BotsList
-          bots={bots}
-          onSelectBot={handleSelectBot}
-          onBotCreated={loadBots}
-          onDeleteBot={handleDeleteBot}
-        />
+        <>
+          {/* Main Content Area */}
+          {sidebarTab === 'profiles' && (
+            <BotsList
+              bots={bots}
+              onSelectBot={handleSelectBot}
+              onBotCreated={loadBots}
+              onDeleteBot={handleDeleteBot}
+            />
+          )}
+
+          {sidebarTab === 'plugins' && <PluginsView />}
+
+          {sidebarTab === 'settings' && <SettingsView />}
+
+          {/* Right Sidebar (Profiles -> Plugins -> Settings) */}
+          <Sidebar
+            activeTab={sidebarTab}
+            onTabChange={setSidebarTab}
+            onLogout={handleLogout}
+          />
+        </>
       ) : (
+        /* Full Visual Studio Canvas */
         <div className="w-full h-full relative">
           {/* Top Auto-Hide Navbar */}
           <Navbar
@@ -258,7 +302,7 @@ export default function App() {
             setTheme={setTheme}
           />
 
-          {/* Canvas */}
+          {/* Infinite DAG Canvas */}
           <Canvas
             nodes={nodes}
             edges={edges}

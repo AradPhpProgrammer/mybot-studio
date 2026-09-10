@@ -20,7 +20,47 @@
     "search": "Search...",
     "back": "Back",
     "active": "Active",
-    "inactive": "Inactive"
+    "inactive": "Inactive",
+    "logout": "Logout",
+    "success": "Success",
+    "error": "Error"
+  },
+  "sidebar": {
+    "profiles": "Profiles",
+    "plugins": "Plugins",
+    "settings": "Settings"
+  },
+  "login": {
+    "title": "MyBot Studio Login",
+    "subtitle": "Sign in to access your bot studio & flows",
+    "username_label": "Username",
+    "password_label": "Password",
+    "login_btn": "Sign In",
+    "default_hint": "Default credentials: admin / admin1234",
+    "logging_in": "Signing in..."
+  },
+  "settings": {
+    "title": "Platform Settings",
+    "subtitle": "Manage credentials, system language, fonts, and network proxy",
+    "credentials_section": "Change Credentials",
+    "current_password": "Current Password",
+    "new_username": "New Username",
+    "new_password": "New Password",
+    "save_credentials_btn": "Update Credentials",
+    "language_section": "Language & Localization",
+    "select_language": "Active Language",
+    "upload_language_title": "Add New Language (.json)",
+    "upload_language_desc": "Upload a translation JSON file to install instantly into the locales directory",
+    "upload_btn": "Upload Language File",
+    "font_section": "Typography & Fonts",
+    "select_font": "Active Font",
+    "add_font_title": "Add Custom Font (Upload or CDN)",
+    "font_name_placeholder": "Font Name (e.g. Roboto)",
+    "font_cdn_placeholder": "https://fonts.googleapis.com/css2?family=Roboto&display=swap",
+    "add_font_btn": "Add Font",
+    "proxy_section": "Global Telegram Network Proxy",
+    "cf_worker_label": "Cloudflare Worker Reverse Proxy URL (andro-cfw)",
+    "http_proxy_label": "SOCKS5 / HTTP Proxy URL"
   },
   "navbar": {
     "bots_switch": "Select Bot",
@@ -35,7 +75,7 @@
   },
   "dashboard": {
     "welcome": "Welcome to MyBot Engine",
-    "subtitle": "Unreal Engine & n8n style no-code Telegram bot builder",
+    "subtitle": "Unreal Engine & n8n style visual Telegram bot builder",
     "no_profiles_title": "No Bot Profiles Yet",
     "no_profiles_desc": "Get your Telegram Bot Token from @BotFather and paste it below to begin designing.",
     "create_bot_btn": "Add New Bot",

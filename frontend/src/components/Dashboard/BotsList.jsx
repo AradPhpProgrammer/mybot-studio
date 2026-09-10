@@ -6,10 +6,11 @@ import {
   Trash2, 
   CheckCircle2, 
   Loader2, 
-  ExternalLink, 
-  ShieldCheck, 
+  AlertTriangle,
   Sparkles,
-  Layers
+  Layers,
+  Settings,
+  Globe
 } from 'lucide-react';
 import { useI18n } from '../../locales/i18n';
 import { api } from '../../services/api';
@@ -26,6 +27,7 @@ export default function BotsList({
   const [proxyInput, setProxyInput] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifiedBot, setVerifiedBot] = useState(null);
+  const [warningMessage, setWarningMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleVerifyAndCreate = async (e) => {
@@ -34,9 +36,13 @@ export default function BotsList({
 
     setIsVerifying(true);
     setErrorMessage('');
+    setWarningMessage('');
     try {
       const res = await api.createBot(tokenInput.trim(), proxyInput.trim(), proxyInput.trim());
       setVerifiedBot(res.bot);
+      if (res.bot?.network_warning) {
+        setWarningMessage(res.bot.network_warning);
+      }
       setIsVerifying(false);
       onBotCreated();
     } catch (err) {
@@ -49,16 +55,17 @@ export default function BotsList({
     setModalOpen(false);
     setVerifiedBot(null);
     setTokenInput('');
+    setWarningMessage('');
     onSelectBot(bot);
   };
 
   return (
-    <div className="w-full h-screen bg-background flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="w-full flex-1 overflow-y-auto p-8 bg-background flex flex-col items-center justify-start relative">
       {/* Background ambient lighting */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-accent/5 rounded-full blur-3xl pointer-events-none" />
 
       {/* Header */}
-      <div className="text-center max-w-lg mb-10 z-10 space-y-2">
+      <div className="text-center max-w-lg mb-8 z-10 space-y-2">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface border border-border text-xs font-semibold text-foreground shadow-xs">
           <Sparkles size={14} className="text-accent" />
           <span>MyBot Studio v1.0</span>
@@ -72,7 +79,7 @@ export default function BotsList({
       </div>
 
       {/* Main Content Area */}
-      <div className="w-full max-w-4xl z-10">
+      <div className="w-full max-w-5xl z-10">
         {bots.length === 0 ? (
           /* Empty State exactly as requested by user */
           <div className="flex flex-col items-center justify-center p-12 bg-surface/70 border border-border rounded-3xl backdrop-blur-xl shadow-xl text-center space-y-6">
@@ -91,6 +98,7 @@ export default function BotsList({
                 setModalOpen(true);
                 setVerifiedBot(null);
                 setErrorMessage('');
+                setWarningMessage('');
               }}
               className="group relative w-20 h-20 rounded-full bg-accent text-accent-foreground flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition-all"
               title={t('dashboard.create_bot_btn')}
@@ -105,12 +113,15 @@ export default function BotsList({
           /* Bot Profiles Grid */
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <div className="text-sm font-bold text-foreground">پروفایل‌های ربات شما ({bots.length})</div>
+              <div className="text-sm font-bold text-foreground">
+                پروفایل‌های ربات شما ({bots.length})
+              </div>
               <button
                 onClick={() => {
                   setModalOpen(true);
                   setVerifiedBot(null);
                   setErrorMessage('');
+                  setWarningMessage('');
                 }}
                 className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-accent text-accent-foreground text-xs font-semibold shadow-md hover:opacity-90 transition-all"
               >
@@ -119,20 +130,20 @@ export default function BotsList({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {bots.map((bot) => (
                 <div
                   key={bot.id}
-                  className="p-5 rounded-2xl bg-surface/80 border border-border hover:border-accent/50 shadow-lg hover:shadow-xl transition-all duration-200 flex flex-col justify-between space-y-4 group"
+                  className="p-5 rounded-2xl bg-surface/90 border border-border hover:border-accent/50 shadow-lg hover:shadow-xl transition-all duration-200 flex flex-col justify-between space-y-4 group"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-500 font-bold">
-                        <Bot size={20} />
+                      <div className="w-11 h-11 rounded-2xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-500 font-bold shadow-inner">
+                        <Bot size={22} />
                       </div>
                       <div>
                         <div className="text-sm font-bold text-foreground">{bot.name}</div>
-                        <div className="text-xs text-muted">@{bot.username}</div>
+                        <div className="text-xs text-muted font-mono">@{bot.username}</div>
                       </div>
                     </div>
                     <button
@@ -146,14 +157,15 @@ export default function BotsList({
 
                   <div className="flex items-center justify-between pt-3 border-t border-border/60 text-[11px] text-muted font-mono">
                     <span>ID: {bot.telegram_bot_id}</span>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-semibold">
-                      آنلاین
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-semibold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <span>فعال</span>
                     </span>
                   </div>
 
                   <button
                     onClick={() => onSelectBot(bot)}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-surface-secondary hover:bg-accent hover:text-accent-foreground text-xs font-semibold text-foreground transition-all"
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-surface-secondary hover:bg-accent hover:text-accent-foreground text-xs font-semibold text-foreground transition-all shadow-xs"
                   >
                     <span>{t('dashboard.open_studio')}</span>
                     <ArrowRight size={14} className={dir === 'rtl' ? 'rotate-180' : ''} />
@@ -205,10 +217,13 @@ export default function BotsList({
                     onChange={(e) => setProxyInput(e.target.value)}
                     className="w-full bg-surface-secondary border border-border rounded-xl px-3.5 py-2.5 text-xs text-foreground placeholder:text-field-placeholder outline-none focus:border-accent"
                   />
+                  <span className="text-[10px] text-muted">
+                    برای دور زدن فیلترینگ تلگرام در ایران، آدرس ورکر کلودفلر خود (مثل andro-cfw) را وارد کنید.
+                  </span>
                 </div>
 
                 {errorMessage && (
-                  <div className="p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-xs">
+                  <div className="p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-xs leading-relaxed">
                     {errorMessage}
                   </div>
                 )}
@@ -249,9 +264,16 @@ export default function BotsList({
                     {t('dashboard.bot_verified')}
                   </h3>
                   <p className="text-xs text-muted">
-                    اطلاعات ربات با موفقیت از سرورهای تلگرام دریافت شد:
+                    پروفایل ربات ساخته شد و تمپلیت استارت برای آن بارگذاری گردید:
                   </p>
                 </div>
+
+                {warningMessage && (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[11px] text-start leading-relaxed flex items-start gap-2">
+                    <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                    <span>{warningMessage}</span>
+                  </div>
+                )}
 
                 <div className="p-4 rounded-2xl bg-surface-secondary border border-border text-start space-y-2 text-xs font-medium">
                   <div className="flex justify-between">
@@ -260,7 +282,7 @@ export default function BotsList({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted">یوزرنیم:</span>
-                    <span className="font-bold text-foreground">@{verifiedBot.username}</span>
+                    <span className="font-bold text-foreground font-mono">@{verifiedBot.username}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted">شناسه عددی (Bot ID):</span>
