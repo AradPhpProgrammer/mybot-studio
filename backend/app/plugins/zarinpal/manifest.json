@@ -1,0 +1,11 @@
+{
+  "key": "zarinpal",
+  "name": "ZarinPal Payment",
+  "name_fa": "درگاه پرداخت زرین‌پال",
+  "version": "1.0.0",
+  "type": "toolkit",
+  "icon": "CreditCard",
+  "author": "MyBot Core Team",
+  "description": "Adds ZarinPal payment request and verification nodes to the visual canvas.",
+  "description_fa": "افزودن نودهای درخواست و اعتبارسنجی پرداخت زرین‌پال به بوم طراحی."
+}

@@ -1,0 +1,81 @@
+{
+  "_meta": {
+    "name": "English",
+    "dir": "ltr",
+    "flag": "🇺🇸"
+  },
+  "common": {
+    "app_name": "MyBot Studio",
+    "save": "Save Changes",
+    "saved": "Saved",
+    "saving": "Saving...",
+    "deploy": "Deploy & Run",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close",
+    "add": "Add",
+    "settings": "Settings",
+    "fullscreen": "Fullscreen",
+    "search": "Search...",
+    "back": "Back",
+    "active": "Active",
+    "inactive": "Inactive"
+  },
+  "navbar": {
+    "bots_switch": "Select Bot",
+    "no_bot_selected": "No Bot Selected",
+    "unsaved_changes": "Unsaved changes",
+    "update_available": "New version available!",
+    "export_json": "Export Template (JSON)",
+    "import_json": "Import Template (JSON)",
+    "plugins": "Plugins",
+    "language": "Language",
+    "font": "Font"
+  },
+  "dashboard": {
+    "welcome": "Welcome to MyBot Engine",
+    "subtitle": "Unreal Engine & n8n style no-code Telegram bot builder",
+    "no_profiles_title": "No Bot Profiles Yet",
+    "no_profiles_desc": "Get your Telegram Bot Token from @BotFather and paste it below to begin designing.",
+    "create_bot_btn": "Add New Bot",
+    "token_input_label": "Telegram Bot Token (from @BotFather)",
+    "token_placeholder": "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ...",
+    "proxy_optional": "Cloudflare Worker URL or Proxy (optional to bypass restrictions)",
+    "verifying_token": "Verifying with Telegram...",
+    "bot_verified": "Bot Verified!",
+    "open_studio": "Open Studio"
+  },
+  "canvas": {
+    "quick_add": "Quick Add Node (Space or Right Click)",
+    "categories": {
+      "triggers": "Triggers & Events",
+      "messages": "Messages & Media",
+      "logic": "Logic & Variables",
+      "plugins": "Plugins & Webhooks"
+    }
+  },
+  "mockup": {
+    "title": "Live Telegram Chat Preview",
+    "test_mode": "Interactive Test",
+    "edit_mode": "Visual Edit",
+    "type_message": "Write a message...",
+    "send": "Send",
+    "rich_toolbar": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "spoiler": "Spoiler",
+      "quote": "Expandable Quote",
+      "code": "Code",
+      "table": "Monospace Table"
+    },
+    "buttons": {
+      "add_row": "+ Add Button Row",
+      "add_btn": "+ Button",
+      "style_default": "Default",
+      "style_primary": "Primary (Blue)",
+      "style_success": "Success (Green)",
+      "style_danger": "Danger (Red)"
+    }
+  }
+}

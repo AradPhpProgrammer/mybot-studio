@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # 1. 24/7 Independent Bot Runner (Zero Downtime during Panel Updates)
+  mybot-bot-engine:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.bot-engine
+    container_name: mybot-bot-engine
+    restart: always
+    volumes:
+      - mybot-data:/app/data
+    environment:
+      - DATABASE_PATH=/app/data/mybot.db
+      - CF_PROXY_URL=${CF_PROXY_URL:-}
+      - HTTP_PROXY=${HTTP_PROXY:-}
+    networks:
+      - mybot-network
+
+  # 2. Panel Backend (Admin API, Flows, Simulator, Auth)
+  mybot-panel-backend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.backend
+    container_name: mybot-panel-backend
+    restart: always
+    volumes:
+      - mybot-data:/app/data
+      - ../backend/app/locales:/app/app/locales
+      - ../backend/app/fonts:/app/app/fonts
+      - ../backend/app/plugins:/app/app/plugins
+    environment:
+      - DATABASE_PATH=/app/data/mybot.db
+      - ADMIN_SECRET_PATH=${ADMIN_SECRET_PATH:-panel_adm_x9a2k}
+      - JWT_SECRET=${JWT_SECRET:-mybot-secret-jwt-key-production-82910}
+      - DEFAULT_ADMIN_USER=${DEFAULT_ADMIN_USER:-admin}
+      - DEFAULT_ADMIN_PASS=${DEFAULT_ADMIN_PASS:-admin123456}
+      - CF_PROXY_URL=${CF_PROXY_URL:-}
+      - HTTP_PROXY=${HTTP_PROXY:-}
+    networks:
+      - mybot-network
+
+  # 3. Web Frontend & Reverse Proxy
+  mybot-frontend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.frontend
+    container_name: mybot-frontend
+    restart: always
+    ports:
+      - "${PANEL_PORT:-80}:80"
+    depends_on:
+      - mybot-panel-backend
+    networks:
+      - mybot-network
+
+volumes:
+  mybot-data:
+    driver: local
+
+networks:
+  mybot-network:
+    driver: bridge

@@ -1,0 +1,114 @@
+import aiosqlite
+import json
+import logging
+from typing import AsyncGenerator
+from app.config import settings
+
+logger = logging.getLogger(__name__)
+
+async def get_db() -> AsyncGenerator[aiosqlite.Connection, None]:
+    async with aiosqlite.connect(settings.DATABASE_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        await db.execute("PRAGMA journal_mode=WAL;")
+        await db.execute("PRAGMA synchronous=NORMAL;")
+        await db.execute("PRAGMA foreign_keys=ON;")
+        yield db
+
+async def init_db():
+    async with aiosqlite.connect(settings.DATABASE_PATH) as db:
+        await db.execute("PRAGMA journal_mode=WAL;")
+        await db.execute("PRAGMA synchronous=NORMAL;")
+        await db.execute("PRAGMA foreign_keys=ON;")
+        
+        # 1. Admin Users Table
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS admin_users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        
+        # 2. Bots Profiles Table
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS bots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                token TEXT UNIQUE NOT NULL,
+                name TEXT NOT NULL,
+                username TEXT NOT NULL,
+                telegram_bot_id INTEGER NOT NULL,
+                is_active INTEGER DEFAULT 1,
+                webhook_secret TEXT,
+                settings JSON DEFAULT '{}',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        
+        # 3. Workflows / Flows Table
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS flows (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                bot_id INTEGER NOT NULL,
+                name TEXT NOT NULL DEFAULT 'Main Flow',
+                is_active INTEGER DEFAULT 1,
+                version INTEGER DEFAULT 1,
+                nodes JSON NOT NULL DEFAULT '[]',
+                edges JSON NOT NULL DEFAULT '[]',
+                viewport JSON DEFAULT '{"x": 0, "y": 0, "zoom": 1}',
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (bot_id) REFERENCES bots(id) ON DELETE CASCADE
+            );
+        """)
+        
+        # 4. Bot Users Table (NoSQL data store inside JSON field)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS bot_users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                bot_id INTEGER NOT NULL,
+                telegram_id INTEGER NOT NULL,
+                username TEXT,
+                first_name TEXT,
+                last_name TEXT,
+                language_code TEXT,
+                data JSON NOT NULL DEFAULT '{}',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(bot_id, telegram_id),
+                FOREIGN KEY (bot_id) REFERENCES bots(id) ON DELETE CASCADE
+            );
+        """)
+        
+        # 5. Plugins Table
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS plugins (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                plugin_key TEXT UNIQUE NOT NULL,
+                name TEXT NOT NULL,
+                version TEXT NOT NULL,
+                plugin_type TEXT NOT NULL, -- 'toolkit' or 'admin'
+                is_active INTEGER DEFAULT 1,
+                config JSON DEFAULT '{}',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        
+        # 6. Execution Logs Table (for live debugging like n8n)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS execution_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                bot_id INTEGER NOT NULL,
+                trigger_type TEXT NOT NULL,
+                telegram_id INTEGER,
+                status TEXT NOT NULL, -- 'success', 'error'
+                node_steps JSON DEFAULT '[]',
+                error_message TEXT,
+                duration_ms REAL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (bot_id) REFERENCES bots(id) ON DELETE CASCADE
+            );
+        """)
+        
+        await db.commit()
+        logger.info("Database initialized successfully with WAL mode.")

@@ -1,0 +1,81 @@
+{
+  "_meta": {
+    "name": "Русский",
+    "dir": "ltr",
+    "flag": "🇷🇺"
+  },
+  "common": {
+    "app_name": "MyBot Studio",
+    "save": "Сохранить",
+    "saved": "Сохранено",
+    "saving": "Сохранение...",
+    "deploy": "Запустить",
+    "delete": "Удалить",
+    "cancel": "Отмена",
+    "confirm": "Подтвердить",
+    "close": "Закрыть",
+    "add": "Добавить",
+    "settings": "Настройки",
+    "fullscreen": "Полный экран",
+    "search": "Поиск...",
+    "back": "Назад",
+    "active": "Активен",
+    "inactive": "Неактивен"
+  },
+  "navbar": {
+    "bots_switch": "Выбрать бота",
+    "no_bot_selected": "Бот не выбран",
+    "unsaved_changes": "Несохраненные изменения",
+    "update_available": "Доступна новая версия!",
+    "export_json": "Экспорт шаблона (JSON)",
+    "import_json": "Импорт шаблона (JSON)",
+    "plugins": "Плагины",
+    "language": "Язык",
+    "font": "Шрифт"
+  },
+  "dashboard": {
+    "welcome": "Добро пожаловать в MyBot Engine",
+    "subtitle": "Конструктор Telegram ботов без кода в стиле Unreal Engine и n8n",
+    "no_profiles_title": "У вас пока нет ботов",
+    "no_profiles_desc": "Получите токен бота у @BotFather и вставьте его ниже.",
+    "create_bot_btn": "Добавить нового бота",
+    "token_input_label": "Токен Telegram бота",
+    "token_placeholder": "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ...",
+    "proxy_optional": "URL Cloudflare Worker или прокси (опционально)",
+    "verifying_token": "Проверка в Telegram...",
+    "bot_verified": "Бот подтвержден!",
+    "open_studio": "Открыть студию"
+  },
+  "canvas": {
+    "quick_add": "Быстрое добавление (Пробел или правый клик)",
+    "categories": {
+      "triggers": "События и триггеры",
+      "messages": "Сообщения и медиа",
+      "logic": "Логика и переменные",
+      "plugins": "Плагины и вебхуки"
+    }
+  },
+  "mockup": {
+    "title": "Превью чата Telegram",
+    "test_mode": "Интерактивный тест",
+    "edit_mode": "Визуальный редактор",
+    "type_message": "Написать сообщение...",
+    "send": "Отправить",
+    "rich_toolbar": {
+      "bold": "Жирный",
+      "italic": "Курсив",
+      "spoiler": "Спойлер",
+      "quote": "Цитата",
+      "code": "Код",
+      "table": "Таблица"
+    },
+    "buttons": {
+      "add_row": "+ Добавить строку",
+      "add_btn": "+ Кнопка",
+      "style_default": "Обычная",
+      "style_primary": "Синяя (Primary)",
+      "style_success": "Зеленая (Success)",
+      "style_danger": "Красная (Danger)"
+    }
+  }
+}

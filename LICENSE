@@ -1,0 +1,51 @@
+GNU AFFERO GENERAL PUBLIC LICENSE
+Version 3, 19 November 2007
+Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
+
+Everyone is permitted to copy and distribute verbatim copies
+of this license document, but changing it is not allowed.
+
+==============================================================================
+MYBOT EXTENSION & PLUGIN EXCEPTION
+(Additional Permission under Section 7 of AGPLv3)
+==============================================================================
+
+As a special exception to the GNU Affero General Public License version 3:
+
+1. Permission is hereby granted to author, distribute, license, and sell
+   custom plugins, extensions, workflows, templates, and integration modules
+   designed to interface with MyBot ("Plugins") under any license terms of
+   the plugin author's choice, including commercial, proprietary, closed-source,
+   or permissive open-source licenses.
+
+2. The development, installation, execution, or commercial distribution of
+   such Plugins, when communicating with MyBot through its official Plugin
+   APIs, Python Node interfaces, REST APIs, or hook mechanisms, does not by
+   itself cause the Plugin or its source code to be subject to the terms of
+   the AGPLv3.
+
+3. The core MyBot software itself, along with any direct modifications,
+   enhancements, or derivatives of the core MyBot code, remains strictly subject
+   to the full terms and copyleft requirements of the GNU Affero General
+   Public License (AGPLv3).
+
+==============================================================================
+                    GNU AFFERO GENERAL PUBLIC LICENSE
+                       TERMS AND CONDITIONS
+==============================================================================
+
+0. Definitions.
+"This License" refers to version 3 of the GNU Affero General Public License.
+"Copyright" also means copyright-like laws that apply to other kinds of works.
+"The Program" refers to any copyrightable work licensed under this License.
+Each licensee is addressed as "you".  "Licensees" and "recipients" may be
+individuals or organizations.
+
+To "modify" a work means to copy from or adapt all or part of the work in a
+fashion requiring copyright permission, other than the making of an exact copy.
+The resulting work is called a "modified version" of the earlier work or a
+work "based on" the earlier work.
+
+[The full text of the GNU Affero General Public License v3 continues as standard]
+A complete copy of the GNU Affero General Public License v3 is available at:
+https://www.gnu.org/licenses/agpl-3.0.txt

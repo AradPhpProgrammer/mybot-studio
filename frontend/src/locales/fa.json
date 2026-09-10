@@ -1,0 +1,81 @@
+{
+  "_meta": {
+    "name": "فارسی",
+    "dir": "rtl",
+    "flag": "🇮🇷"
+  },
+  "common": {
+    "app_name": "مای‌بات استودیو",
+    "save": "ذخیره تغییرات",
+    "saved": "ذخیره شد",
+    "saving": "در حال ذخیره...",
+    "deploy": "انتشار و ران",
+    "delete": "حذف",
+    "cancel": "لغو",
+    "confirm": "تایید",
+    "close": "بستن",
+    "add": "افزودن",
+    "settings": "تنظیمات",
+    "fullscreen": "تمام صفحه",
+    "search": "جستجو...",
+    "back": "بازگشت",
+    "active": "فعال",
+    "inactive": "غیرفعال"
+  },
+  "navbar": {
+    "bots_switch": "انتخاب ربات",
+    "no_bot_selected": "هیچ رباتی انتخاب نشده",
+    "unsaved_changes": "تغییرات ذخیره نشده",
+    "update_available": "نسخه جدید در دسترس است!",
+    "export_json": "خروجی تمپلیت (JSON)",
+    "import_json": "ورود تمپلیت (JSON)",
+    "plugins": "پلاگین‌ها",
+    "language": "زبان",
+    "font": "فونت"
+  },
+  "dashboard": {
+    "welcome": "خوش آمدید به MyBot Engine",
+    "subtitle": "طراحی پیشرفته و بدون کد ربات‌های تلگرام به سبک Unreal Engine و n8n",
+    "no_profiles_title": "هنوز پروفایلی ندارید",
+    "no_profiles_desc": "برای شروع طراحی، توکن ربات تلگرام خود را از BotFather دریافت و وارد کنید.",
+    "create_bot_btn": "افزودن ربات جدید",
+    "token_input_label": "توکن ربات تلگرام (از @BotFather)",
+    "token_placeholder": "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ...",
+    "proxy_optional": "آدرس ورکر کلودفلر یا پراکسی (اختیاری برای دور زدن فیلترینگ)",
+    "verifying_token": "در حال اعتبارسنجی با تلگرام...",
+    "bot_verified": "ربات تایید شد!",
+    "open_studio": "ورود به استودیو طراحی"
+  },
+  "canvas": {
+    "quick_add": "افزودن سریع نود (Space یا کلیک راست)",
+    "categories": {
+      "triggers": "رویدادها و شروع (Triggers)",
+      "messages": "پیام‌ها و رسانه (Messages)",
+      "logic": "منطق و متغیرها (Logic & Variables)",
+      "plugins": "پلاگین‌ها و وب‌هوک (Plugins)"
+    }
+  },
+  "mockup": {
+    "title": "پیش‌نمایش زنده چت تلگرام",
+    "test_mode": "حالت تست تعاملی",
+    "edit_mode": "حالت ویرایش بصری",
+    "type_message": "پیامی بنویسید...",
+    "send": "ارسال",
+    "rich_toolbar": {
+      "bold": "درشت (Bold)",
+      "italic": "ایتالیک (Italic)",
+      "spoiler": "اسپویلر (Spoiler)",
+      "quote": "نقل‌قول بازشونده (Expandable Quote)",
+      "code": "کد (Code)",
+      "table": "جدول مونو‌اسپیس (Table)"
+    },
+    "buttons": {
+      "add_row": "+ افزودن ردیف دکمه",
+      "add_btn": "+ دکمه",
+      "style_default": "عادی",
+      "style_primary": "آبی (Primary)",
+      "style_success": "سبز (Success)",
+      "style_danger": "قرمز (Danger)"
+    }
+  }
+}

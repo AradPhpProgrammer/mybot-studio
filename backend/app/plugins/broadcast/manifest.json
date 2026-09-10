@@ -1,0 +1,11 @@
+{
+  "key": "broadcast",
+  "name": "Broadcast Tool",
+  "name_fa": "ارسال همگانی پیشرفته",
+  "version": "1.0.0",
+  "type": "admin",
+  "icon": "Radio",
+  "author": "MyBot Core Team",
+  "description": "Send broadcast text or media messages to all users with Telegram rate-limiting protection (30 msg/sec).",
+  "description_fa": "ارسال پیام همگانی به کاربران با کنترل نرخ ارسال تلگرام (۳۰ پیام در ثانیه) برای جلوگیری از بلاک."
+}

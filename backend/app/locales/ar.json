@@ -1,0 +1,81 @@
+{
+  "_meta": {
+    "name": "العربية",
+    "dir": "rtl",
+    "flag": "🇸🇦"
+  },
+  "common": {
+    "app_name": "ماي بوت ستوديو",
+    "save": "حفظ التغييرات",
+    "saved": "تم الحفظ",
+    "saving": "جاري الحفظ...",
+    "deploy": "نشر وتشغيل",
+    "delete": "حذف",
+    "cancel": "إلغاء",
+    "confirm": "تأكيد",
+    "close": "إغلاق",
+    "add": "إضافة",
+    "settings": "الإعدادات",
+    "fullscreen": "ملء الشاشة",
+    "search": "بحث...",
+    "back": "رجوع",
+    "active": "نشط",
+    "inactive": "معطل"
+  },
+  "navbar": {
+    "bots_switch": "اختيار البوت",
+    "no_bot_selected": "لم يتم اختيار بوت",
+    "unsaved_changes": "تغييرات غير محفوظة",
+    "update_available": "يوجد تحديث جديد!",
+    "export_json": "تصدير القالب (JSON)",
+    "import_json": "استيراد القالب (JSON)",
+    "plugins": "الإضافات",
+    "language": "اللغة",
+    "font": "الخط"
+  },
+  "dashboard": {
+    "welcome": "مرحبًا بك في MyBot Engine",
+    "subtitle": "منصة متطورة لتصميم بوتات تيليجرام بدون كود بأسلوب Unreal Engine و n8n",
+    "no_profiles_title": "لا يوجد لديك بوتات حتى الآن",
+    "no_profiles_desc": "احصل على توكن البوت من @BotFather والصقه أدناه لبدء التصميم.",
+    "create_bot_btn": "إضافة بوت جديد",
+    "token_input_label": "توكن البوت (من @BotFather)",
+    "token_placeholder": "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ...",
+    "proxy_optional": "رابط Cloudflare Worker أو البروكسي (اختياري)",
+    "verifying_token": "جاري التحقق مع تيليجرام...",
+    "bot_verified": "تم التحقق من البوت!",
+    "open_studio": "فتح الاستوديو"
+  },
+  "canvas": {
+    "quick_add": "إضافة عقدة سريعة (Space أو زر الفأرة الأيمن)",
+    "categories": {
+      "triggers": "الأحداث والبدء",
+      "messages": "الرسائل والوسائط",
+      "logic": "المنطق والمتغيرات",
+      "plugins": "الإضافات والويب هوك"
+    }
+  },
+  "mockup": {
+    "title": "معاينة حية لمحادثة تيليجرام",
+    "test_mode": "وضع الاختبار التفاعلي",
+    "edit_mode": "وضع التحرير المرئي",
+    "type_message": "اكتب رسالة...",
+    "send": "إرسال",
+    "rich_toolbar": {
+      "bold": "عريض",
+      "italic": "مائل",
+      "spoiler": "مخفي (Spoiler)",
+      "quote": "اقتباس قابل للتوسيع",
+      "code": "كود",
+      "table": "جدول"
+    },
+    "buttons": {
+      "add_row": "+ إضافة صف أزرار",
+      "add_btn": "+ زر",
+      "style_default": "افتراضي",
+      "style_primary": "أزرق (أساسي)",
+      "style_success": "أخضر (نجاح)",
+      "style_danger": "أحمر (خطر)"
+    }
+  }
+}

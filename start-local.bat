@@ -1,0 +1,62 @@
+@echo off
+setlocal enabledelayedexpansion
+title MyBot Studio - Local Runner
+
+echo ======================================================
+echo    Starting MyBot Studio (Local Development Mode)
+echo ======================================================
+
+cd /d "%~dp0"
+
+REM 1. Check Python
+where python >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Python is not installed or not in PATH.
+    pause
+    exit /b 1
+)
+
+REM 2. Check Node
+where npm >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Node.js / npm is not installed.
+    pause
+    exit /b 1
+)
+
+REM 3. Setup Python VirtualEnv
+if not exist "backend\.venv" (
+    echo [1/4] Creating Python virtual environment...
+    python -m venv backend\.venv
+)
+
+echo [2/4] Installing backend dependencies...
+call backend\.venv\Scripts\activate.bat
+pip install -q -r backend\requirements.txt
+
+REM 4. Setup Frontend
+if not exist "frontend\node_modules" (
+    echo [3/4] Installing frontend dependencies...
+    cd frontend
+    call npm install
+    cd ..
+)
+
+echo [4/4] Launching services...
+echo.
+echo - Backend API:  http://127.0.0.1:8000
+echo - Bot Worker:   Running in background
+echo - Frontend UI:  http://localhost:5173
+echo.
+
+REM Start Bot Worker in background window
+start "MyBot Engine - Bot Worker" cmd /k "cd /d %~dp0\backend && call .venv\Scripts\activate.bat && python -m app.bot_worker"
+
+REM Start Backend API in background window
+start "MyBot Engine - Backend API" cmd /k "cd /d %~dp0\backend && call .venv\Scripts\activate.bat && uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
+
+REM Start Frontend Vite in current window
+cd frontend
+timeout /t 2 >nul
+start http://localhost:5173
+npm run dev
