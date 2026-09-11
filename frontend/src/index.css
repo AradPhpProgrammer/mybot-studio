@@ -1,8 +1,7 @@
+@import '@xyflow/react/dist/style.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import '@xyflow/react/dist/style.css';
 
 /* Base Theme Variables */
 :root,
@@ -90,6 +89,8 @@ body {
   user-select: none;
   background: var(--background);
   color: var(--foreground);
+  margin: 0;
+  padding: 0;
 }
 
 /* Custom Scrollbar */
@@ -111,12 +112,3 @@ body {
 /* Canvas Themes */
 .dark-canvas .react-flow__background { background-color: #1a1f2e; }
 .light-canvas .react-flow__background { background-color: #e8eaf0; }
-
-/* Glassmorphism Utilities */
-.glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-.dark .glass { background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.08); }
-.light .glass { background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255, 255, 255, 0.5); }
-
-/* Node Styles for Dark/Light Consistency */
-[data-theme="light"] .react-flow__node { background: var(--surface); color: var(--foreground); }
-[data-theme="dark"] .react-flow__node { background: var(--surface); color: var(--foreground); }
