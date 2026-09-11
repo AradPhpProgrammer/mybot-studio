@@ -49,6 +49,7 @@ export default function App() {
   const [quickSearchPos, setQuickSearchPos] = useState({ x: 200, y: 200 });
   const [pluginsModalOpen, setPluginsModalOpen] = useState(false);
   const [updateInfo, setUpdateInfo] = useState(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Theme application
   useEffect(() => {
@@ -273,13 +274,15 @@ export default function App() {
 
           {sidebarTab === 'plugins' && <PluginsView />}
 
-          {sidebarTab === 'settings' && <SettingsView />}
+          {sidebarTab === 'settings' && <SettingsView currentTheme={theme} onThemeChange={setTheme} />}
 
           {/* Right Sidebar (Profiles -> Plugins -> Settings) */}
           <Sidebar
             activeTab={sidebarTab}
             onTabChange={setSidebarTab}
             onLogout={handleLogout}
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
           />
         </>
       ) : (

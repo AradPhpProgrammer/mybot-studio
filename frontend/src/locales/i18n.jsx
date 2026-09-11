@@ -21,14 +21,23 @@ export function I18nProvider({ children }) {
     document.documentElement.setAttribute('lang', lang);
   }, [lang]);
 
-  const t = (path, fallback = '') => {
-    const parts = path.split('.');
+  const t = (path, vars = null, fallback = '') => {
+    let parts;
+    if (typeof vars === 'string') {
+      fallback = vars;
+      vars = null;
+    }
+    parts = path.split('.');
     let cur = translations;
     for (const p of parts) {
       if (!cur || typeof cur !== 'object') return fallback || path;
       cur = cur[p];
     }
-    return cur !== undefined ? cur : (fallback || path);
+    let result = cur !== undefined ? cur : (fallback || path);
+    if (typeof result === 'string' && vars) {
+      result = result.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+    }
+    return result;
   };
 
   const changeLanguage = (newLang) => {

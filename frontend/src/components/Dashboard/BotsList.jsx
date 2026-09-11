@@ -1,5 +1,5 @@
-import React from 'react';
-import { Plus, ArrowRight, Trash2, Loader2, AlertTriangle, Bot, Settings, Globe, Type, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, ArrowRight, Trash2, Loader2, AlertTriangle, Bot, CheckCircle2 } from 'lucide-react';
 import { useI18n } from '../../locales/i18n';
 import { api } from '../../services/api';
 import NanoGridCanvas from '../Visuals/NanoGridCanvas';
@@ -13,7 +13,6 @@ export default function BotsList({
   const { t, dir } = useI18n();
   const [modalOpen, setModalOpen] = useState(false);
   const [tokenInput, setTokenInput] = useState('');
-  const [proxyInput, setProxyInput] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifiedBot, setVerifiedBot] = useState(null);
   const [warningMessage, setWarningMessage] = useState('');
@@ -27,7 +26,7 @@ export default function BotsList({
     setErrorMessage('');
     setWarningMessage('');
     try {
-      const res = await api.createBot(tokenInput.trim(), proxyInput.trim(), proxyInput.trim());
+      const res = await api.createBot(tokenInput.trim(), '', '');
       setVerifiedBot(res.bot);
       if (res.bot?.network_warning) {
         setWarningMessage(res.bot.network_warning);
@@ -49,8 +48,7 @@ export default function BotsList({
   };
 
   return (
-    <div className="w-full flex-1 overflow-y-auto p-8 bg-[#090d16] flex flex-col items-center justify-start relative">
-      {/* Animated connected Nano-grid Canvas */}
+    <div className="w-full flex-1 overflow-y-auto p-8 bg-background flex flex-col items-center justify-start relative">
       <NanoGridCanvas />
 
       {/* Header */}
@@ -107,7 +105,7 @@ export default function BotsList({
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-2xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 font-bold shadow-inner">
+                      <div className="w-11 h-11 rounded-2xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-500 font-bold shadow-inner">
                         <Bot size={22} />
                       </div>
                       <div>
@@ -126,7 +124,7 @@ export default function BotsList({
 
                   <div className="flex items-center justify-between pt-3 border-t border-border/40 text-[11px] text-muted font-mono">
                     <span>ID: {bot.telegram_bot_id}</span>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold flex items-center gap-1">
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-semibold flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                       {t('common.online')}
                     </span>
@@ -184,7 +182,7 @@ export default function BotsList({
               </form>
             ) : (
               <div className="text-center space-y-5">
-                <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 flex items-center justify-center mx-auto">
                   <CheckCircle2 size={32} />
                 </div>
                 <div className="space-y-1">
@@ -192,7 +190,7 @@ export default function BotsList({
                   <p className="text-xs text-muted">Bot profile created successfully with starter flow.</p>
                 </div>
                 {warningMessage && (
-                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[11px] text-start leading-relaxed flex items-start gap-2">
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[11px] text-start leading-relaxed flex items-start gap-2">
                     <AlertTriangle size={15} className="shrink-0 mt-0.5" />
                     <span>{warningMessage}</span>
                   </div>
