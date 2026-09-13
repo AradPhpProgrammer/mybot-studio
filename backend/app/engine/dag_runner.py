@@ -329,16 +329,31 @@ class DAGRunner:
                 })
 
             elif ntype == "action_condition":
-                cond_expr = data.get("condition", "True")
-                # Eval condition
-                eval_ctx = {
-                    "user": type("Obj", (), context["user"]),
-                    "balance": context["user"].get("balance", 0),
-                    "is_vip": context["user"].get("is_vip", False),
-                    "message": type("Obj", (), {"text": payload}),
-                    "payload": payload
+                # New format: input_a, operator, input_b (e.g. user.balance, >=, 100)
+                raw_a = render_variables(str(data.get("input_a", "") or "0"), context)
+                raw_b = render_variables(str(data.get("input_b", "") or "0"), context)
+                op = data.get("operator", ">=")
+                try:
+                    val_a = float(raw_a) if raw_a else 0.0
+                except Exception:
+                    val_a = raw_a
+                try:
+                    val_b = float(raw_b) if raw_b else 0.0
+                except Exception:
+                    val_b = raw_b
+
+                ops_map = {
+                    ">": lambda a, b: a > b,
+                    "<": lambda a, b: a < b,
+                    ">=": lambda a, b: a >= b,
+                    "<=": lambda a, b: a <= b,
+                    "==": lambda a, b: a == b,
+                    "!=": lambda a, b: a != b,
+                    "and": lambda a, b: bool(a) and bool(b),
+                    "or": lambda a, b: bool(a) or bool(b),
                 }
-                res = bool(safe_eval(cond_expr, eval_ctx))
+                fn = ops_map.get(op)
+                res = fn(val_a, val_b) if fn is not None else False
                 next_handle = "true" if res else "false"
 
             elif ntype == "action_set_variable":
@@ -368,6 +383,8 @@ class DAGRunner:
                         context["user"][var_name] = not bool(current)
 
             elif ntype in ("math_add", "math_subtract", "math_multiply", "math_divide"):
+                # Use explicit 'operator' field instead of hardcoded by node type
+                op = data.get("operator", "+")
                 raw_a = render_variables(str(data.get("input_a", 0)), context)
                 raw_b = render_variables(str(data.get("input_b", 0)), context)
                 out_var = data.get("output_variable", "result").strip() or "result"
@@ -380,14 +397,16 @@ class DAGRunner:
                 except Exception:
                     val_b = 0.0
 
-                if ntype == "math_add":
+                if op == '+':
                     calc_res = val_a + val_b
-                elif ntype == "math_subtract":
+                elif op == '-':
                     calc_res = val_a - val_b
-                elif ntype == "math_multiply":
+                elif op == '×' or op == '*':
                     calc_res = val_a * val_b
-                elif ntype == "math_divide":
+                elif op == '÷' or op == '/':
                     calc_res = (val_a / val_b) if val_b != 0 else 0.0
+                else:
+                    calc_res = 0.0
 
                 # Store integer if whole number
                 if isinstance(calc_res, float) and calc_res.is_integer():

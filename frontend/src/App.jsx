@@ -50,6 +50,7 @@ export default function App() {
   const [pluginsModalOpen, setPluginsModalOpen] = useState(false);
   const [updateInfo, setUpdateInfo] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [pendingNodePos, setPendingNodePos] = useState(null);
 
   // Theme application
   useEffect(() => {
@@ -206,15 +207,38 @@ export default function App() {
   };
 
   // Quick Search Add Node
-  const handleAddNode = (def) => {
+  const handleAddNode = (def, pos) => {
+    const position = pos || pendingNodePos || { x: quickSearchPos.x || 300, y: quickSearchPos.y || 200 };
     const newNode = {
       id: `node_${Date.now()}`,
       type: def.type,
-      position: { x: quickSearchPos.x || 300, y: quickSearchPos.y || 200 },
+      position,
       data: { ...def.data }
     };
     setNodes((nds) => [...nds, newNode]);
     setSelectedNode(newNode);
+    setPendingNodePos(null);
+    setIsDirty(true);
+  };
+
+  // Add node at specific flow position (right-click)
+  const handleAddNodeAt = (clientX, clientY, flowPos) => {
+    setQuickSearchPos({ x: clientX, y: clientY });
+    setPendingNodePos(flowPos || null);
+    setQuickSearchOpen(true);
+  };
+
+  // Delete node and its connected edges
+  const handleDeleteNode = (nodeId) => {
+    setNodes((nds) => nds.filter(n => n.id !== nodeId));
+    setEdges((eds) => eds.filter(e => e.source !== nodeId && e.target !== nodeId));
+    if (selectedNode?.id === nodeId) setSelectedNode(null);
+    setIsDirty(true);
+  };
+
+  // Delete a single edge
+  const handleDeleteEdge = (edgeId) => {
+    setEdges((eds) => eds.filter(e => e.id !== edgeId));
     setIsDirty(true);
   };
 
@@ -314,7 +338,11 @@ export default function App() {
             onConnect={handleConnect}
             onNodeClick={handleNodeClick}
             onPaneContextMenu={handlePaneContextMenu}
+            onAddNodeAt={handleAddNodeAt}
+            onDeleteNode={handleDeleteNode}
+            onDeleteEdge={handleDeleteEdge}
             theme={theme}
+            dirty={isDirty}
           />
 
           {/* Floating Draggable Resizable Telegram Mockup & Live Simulator */}

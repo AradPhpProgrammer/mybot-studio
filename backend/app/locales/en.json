@@ -143,12 +143,32 @@
   },
   "mockup": {
     "title": "Telegram Live Chat Preview",
+    "welcome_msg": "Hello! I am MyBot. Press /start or tap the button below.",
+    "start_btn": "Start",
+    "text_label": "Message text or caption (HTML supported)",
     "test_mode": "Interactive Simulator",
     "edit_mode": "Visual Inspector",
     "type_message": "Type a message...",
     "send": "Send",
     "clear_chat": "Clear Chat",
     "typing": "Typing...",
+    "preview_label": "Preview in Telegram chat",
+    "no_node_selected": "No message node selected",
+    "no_node_selected_desc": "To edit text and buttons in the preview, click a Send Message node on the canvas.",
+    "buttons": {
+      "inline_title": "Inline Glass Buttons",
+      "add_row": "Add Row",
+      "add_btn": "Add Button",
+      "row": "Row",
+      "btn_text": "Button Text",
+      "btn_action": "Callback / Value",
+      "btn_new": "New Button",
+      "new_btn": "New Button",
+      "default": "Default",
+      "primary": "Primary (Blue)",
+      "success": "Success (Green)",
+      "danger": "Danger (Red)"
+    },
     "rich_toolbar": {
       "bold": "Bold", "italic": "Italic", "spoiler": "Spoiler",
       "quote": "Expandable Quote", "code": "Code", "table": "Monospace Table"

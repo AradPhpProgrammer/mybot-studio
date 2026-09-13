@@ -104,9 +104,9 @@ async def test_dag_runner_starter_flow():
         )
         assert res["success"] is True
         assert len(res["messages"]) == 1
-        assert "سلام آراد!" in res["messages"][0]["text"]
+        assert "Hello" in res["messages"][0]["text"] and "first_name" not in res["messages"][0]["text"]
         assert len(res["messages"][0]["reply_markup"]["inline_keyboard"][0]) == 2
-        print("✅ Starter /start execution passed:", res["messages"][0]["text"])
+        print("✅ Starter /start execution passed:", res["messages"][0]["text"][:60])
 
         # 2. Trigger callback 'btn_claim' (Should add 50 balance and alert user)
         res_cb = await runner.execute_flow(
@@ -117,8 +117,57 @@ async def test_dag_runner_starter_flow():
         assert res_cb["success"] is True
         assert res_cb["user_state"]["balance"] == 50
         assert len(res_cb["alerts"]) == 1
-        assert "۵۰ سکه هدیه" in res_cb["alerts"][0]["text"]
-        print("✅ Callback 'btn_claim' execution & NoSQL variable update passed:", res_cb["alerts"][0]["text"])
+        assert "50" in res_cb["alerts"][0]["text"]
+        print("✅ Callback 'btn_claim' execution & NoSQL variable update passed:", res_cb["alerts"][0]["text"][:60])
+
+    try:
+        os.remove(db_path)
+    except Exception:
+        pass
+
+async def test_condition_and_math_operators():
+    """Tests the new condition (input_a/op/input_b) and math operator formats."""
+    import tempfile
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+        db_path = tmp.name
+
+    async with aiosqlite.connect(db_path) as db:
+        db.row_factory = aiosqlite.Row
+        await db.execute("CREATE TABLE bot_users (id INTEGER PRIMARY KEY AUTOINCREMENT, bot_id INTEGER, telegram_id INTEGER, username TEXT, first_name TEXT, last_name TEXT, language_code TEXT, data JSON DEFAULT '{}', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE(bot_id, telegram_id));")
+        await db.execute("CREATE TABLE flows (id INTEGER PRIMARY KEY AUTOINCREMENT, bot_id INTEGER, name TEXT DEFAULT 'Main', is_active INTEGER DEFAULT 1, version INTEGER DEFAULT 1, nodes JSON DEFAULT '[]', edges JSON DEFAULT '[]', viewport JSON DEFAULT '{}', updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);")
+        nodes = [
+            {"id":"n1","type":"trigger_callback","data":{"callback_data":"check"}},
+            {"id":"n2","type":"action_condition","data":{"input_a":"user.score","operator":">=","input_b":"10"}},
+            {"id":"n3","type":"action_set_variable","data":{"variable_name":"passed","operation":"set","value":"yes"}},
+            {"id":"n4","type":"action_set_variable","data":{"variable_name":"passed","operation":"set","value":"no"}},
+            {"id":"n5","type":"math_multiply","data":{"input_a":"5","operator":"*","input_b":"4","output_variable":"mul"}},
+        ]
+        edges = [
+            {"id":"e1","source":"n1","target":"n2","sourceHandle":"exec"},
+            {"id":"e2","source":"n2","target":"n3","sourceHandle":"true"},
+            {"id":"e3","source":"n2","target":"n4","sourceHandle":"false"},
+            {"id":"e4","source":"n1","target":"n5","sourceHandle":"exec"},
+        ]
+        await db.execute("INSERT INTO flows (bot_id, name, nodes, edges) VALUES (2,'t',?,?)", (json.dumps(nodes), json.dumps(edges)))
+        await db.commit()
+        ui = {"id":99,"username":"u","first_name":"U"}
+
+        # Low score (0) -> false branch
+        runner = DAGRunner(bot_id=2, db=db)
+        res = await runner.execute_flow("callback","check",ui)
+        assert res["user_state"]["passed"] == "no", f"expected 'no' got {res['user_state']['passed']}"
+        assert res["user_state"]["mul"] == 20, f"expected 20 got {res['user_state']['mul']}"
+        print("✅ condition + math operator test passed (false branch, mul=20)")
+
+    # High score -> true branch (fresh connection)
+    async with aiosqlite.connect(db_path) as db:
+        db.row_factory = aiosqlite.Row
+        await db.execute("UPDATE bot_users SET data=? WHERE bot_id=2 AND telegram_id=99", (json.dumps({"score":50}),))
+        await db.commit()
+        r2 = DAGRunner(bot_id=2, db=db)
+        res2 = await r2.execute_flow("callback","check",ui)
+        assert res2["user_state"]["passed"] == "yes", f"expected 'yes' got {res2['user_state']['passed']}"
+        print("✅ condition true branch passed")
 
     try:
         os.remove(db_path)
@@ -130,4 +179,5 @@ if __name__ == "__main__":
     test_formatting_table()
     test_formatting_keyboard_styles()
     asyncio.run(test_dag_runner_starter_flow())
+    asyncio.run(test_condition_and_math_operators())
     print("\n🎉 ALL TESTS PASSED SUCCESSFULLY! 🎉")

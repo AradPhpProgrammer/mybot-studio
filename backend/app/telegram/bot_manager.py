@@ -3,6 +3,7 @@ import hashlib
 import json
 import logging
 import re
+import time
 from typing import Any, Dict, List, Optional
 
 import aiosqlite
@@ -16,14 +17,18 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# STARTER TEMPLATE (English, identical for every language)
+# Uses trigger_command node with command='/start' — not the removed trigger_start.
+# ---------------------------------------------------------------------------
 STARTER_TEMPLATE_NODES = [
     {
         "id": "node_1",
-        "type": "trigger_start",
+        "type": "trigger_command",
         "position": {"x": 100, "y": 200},
         "data": {
-            "extract_referral": True,
-            "referral_variable": "ref_code"
+            "command": "/start",
+            "description": "Start the bot"
         }
     },
     {
@@ -32,7 +37,9 @@ STARTER_TEMPLATE_NODES = [
         "position": {"x": 480, "y": 180},
         "data": {
             "media_type": "text",
-            "text": "Hello {first_name}! Welcome to MyBot Studio.\nVisual no-code platform for Telegram bots.",
+            "text": "👋 Hello {first_name}!\nWelcome to MyBot Studio.\nChoose an option below:",
+            "media_url": "",
+            "parse_mode": "HTML",
             "enable_auto_chat_action": True,
             "expandable_quote": False,
             "has_spoiler": False,
@@ -40,12 +47,12 @@ STARTER_TEMPLATE_NODES = [
             "buttons": [
                 [
                     {
-                        "text": "About Project",
+                        "text": "ℹ️ About",
                         "callback_data": "btn_about",
                         "style": "primary"
                     },
                     {
-                        "text": "Claim Welcome Gift",
+                        "text": "🎁 Welcome Gift",
                         "callback_data": "btn_claim",
                         "style": "success"
                     }
@@ -67,9 +74,12 @@ STARTER_TEMPLATE_NODES = [
         "position": {"x": 480, "y": 460},
         "data": {
             "media_type": "text",
-            "text": "This bot is running on MyBot Engine. You can customize all menus, buttons, and logic visually from the studio canvas.",
+            "text": "MyBot runs on MyBot Engine — a visual no-code Telegram bot builder. Edit this flow from the studio canvas.",
+            "media_url": "",
             "enable_auto_chat_action": True,
             "expandable_quote": True,
+            "has_spoiler": False,
+            "keyboard_type": "inline",
             "buttons": []
         }
     },
@@ -88,7 +98,7 @@ STARTER_TEMPLATE_NODES = [
         "data": {
             "variable_name": "balance",
             "operation": "add",
-            "value": 50
+            "value": "50"
         }
     },
     {
@@ -96,7 +106,7 @@ STARTER_TEMPLATE_NODES = [
         "type": "action_answer_callback",
         "position": {"x": 860, "y": 700},
         "data": {
-            "text": "Congratulations! 50 reward units added to your balance.",
+            "text": "🎉 Done! 50 reward units added to your balance.",
             "show_alert": True
         }
     }
@@ -124,7 +134,11 @@ class BotManager:
             server = TelegramAPIServer.from_base(worker.rstrip("/"))
             return AiohttpSession(api=server)
         elif proxy:
-            return AiohttpSession(proxy=proxy)
+            try:
+                return AiohttpSession(proxy=proxy)
+            except Exception as e:
+                logger.warning(f"Could not create proxy session ({proxy}): {e}. Falling back to direct connection.")
+                return None
         return None
 
     def parse_token_bot_id(self, token: str) -> Optional[int]:
@@ -140,20 +154,15 @@ class BotManager:
     async def verify_token(
         self, token: str, cf_worker_url: Optional[str] = None, proxy_url: Optional[str] = None
     ) -> Dict[str, Any]:
-        """
-        Calls Telegram getMe to verify bot token and extract info.
-        If network connection is blocked (e.g., Iranian ISP sinkhole 10.10.34.35),
-        gracefully extracts bot ID from token so design can continue.
-        """
         clean_token = token.strip()
         extracted_id = self.parse_token_bot_id(clean_token)
         if not extracted_id:
-            return {"valid": False, "error": "Invalid token format. Token must be like 123456789:ABCdef..."}
+            return {"valid": False, "error": "Invalid token format. Token must look like 123456789:ABCdef..."}
 
         session = self.get_api_session(cf_worker_url, proxy_url)
         bot = Bot(token=clean_token, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
         try:
-            me = await asyncio.wait_for(bot.get_me(), timeout=4.0)
+            me = await asyncio.wait_for(bot.get_me(), timeout=8.0)
             return {
                 "valid": True,
                 "id": me.id,
@@ -165,8 +174,7 @@ class BotManager:
             }
         except Exception as e:
             err_str = str(e)
-            logger.warning(f"Live token check with Telegram failed ({err_str}). Using offline fallback for ID {extracted_id}.")
-            
+            logger.warning(f"Live token check with Telegram failed ({err_str[:120]}). Using offline fallback for ID {extracted_id}.")
             return {
                 "valid": True,
                 "id": extracted_id,
@@ -175,10 +183,13 @@ class BotManager:
                 "can_join_groups": True,
                 "can_read_all_group_messages": False,
                 "is_online_verified": False,
-                "network_warning": "Telegram connection was not reached directly. Bot profile created with ID. You can configure Cloudflare Tunnel (andro-cfw) in Settings."
+                "network_warning": "Telegram was not reached directly (network restriction). Profile created from token ID. Set up Cloudflare Tunnel / proxy in Settings to go online.",
             }
         finally:
-            await bot.session.close()
+            try:
+                await bot.session.close()
+            except Exception:
+                pass
 
     async def register_new_bot(
         self,
@@ -187,12 +198,17 @@ class BotManager:
         custom_proxy: Optional[str] = None,
         cf_worker_url: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Verifies token, persists bot into SQLite, and provisions starter MyBot flow."""
-        verif = await self.verify_token(token, cf_worker_url, custom_proxy)
+        clean_token = token.strip()
+
+        existing = await db.execute("SELECT id FROM bots WHERE token = ?", (clean_token,))
+        if await existing.fetchone():
+            raise ValueError("This bot token is already registered. Open it from your profiles or delete it first.")
+
+        verif = await self.verify_token(clean_token, cf_worker_url, custom_proxy)
         if not verif.get("valid"):
             raise ValueError(f"Invalid Telegram Bot Token: {verif.get('error')}")
 
-        secret = hashlib.sha256(token.encode()).hexdigest()[:16]
+        secret = hashlib.sha256(clean_token.encode()).hexdigest()[:16]
         bot_settings = {
             "auto_chat_action": True,
             "typing_delay_ms": 400,
@@ -200,31 +216,20 @@ class BotManager:
             "custom_proxy": custom_proxy or "",
             "default_language": "en",
             "sync_commands_automatically": True,
-            "is_online_verified": verif.get("is_online_verified", False)
+            "is_online_verified": verif.get("is_online_verified", False),
+            "is_miniapp_enabled": False,
+            "bio": "",
+            "description": ""
         }
 
         cursor = await db.execute(
-            """
-            INSERT INTO bots (token, name, username, telegram_bot_id, webhook_secret, settings)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (
-                token.strip(),
-                verif["first_name"],
-                verif["username"],
-                verif["id"],
-                secret,
-                json.dumps(bot_settings)
-            )
+            "INSERT INTO bots (token, name, username, telegram_bot_id, webhook_secret, settings) VALUES (?, ?, ?, ?, ?, ?)",
+            (clean_token, verif["first_name"], verif["username"], verif["id"], secret, json.dumps(bot_settings))
         )
         bot_id = cursor.lastrowid
 
-        # Insert Default Starter MyBot Flow
         await db.execute(
-            """
-            INSERT INTO flows (bot_id, name, is_active, version, nodes, edges)
-            VALUES (?, 'MyBot Starter Flow', 1, 1, ?, ?)
-            """,
+            "INSERT INTO flows (bot_id, name, is_active, version, nodes, edges) VALUES (?, 'MyBot Starter Flow', 1, 1, ?, ?)",
             (bot_id, json.dumps(STARTER_TEMPLATE_NODES), json.dumps(STARTER_TEMPLATE_EDGES))
         )
         await db.commit()
@@ -235,46 +240,40 @@ class BotManager:
             "username": verif["username"],
             "telegram_bot_id": verif["id"],
             "webhook_secret": secret,
-            "network_warning": verif.get("network_warning")
+            "network_warning": verif.get("network_warning"),
         }
 
     async def sync_bot_commands(self, bot_id: int, db: aiosqlite.Connection):
-        """Synchronizes commands from trigger_command nodes directly to Telegram setMyCommands."""
-        cursor = await db.execute(
-            "SELECT token, settings FROM bots WHERE id = ? AND is_active = 1", (bot_id,)
-        )
+        cursor = await db.execute("SELECT token, settings FROM bots WHERE id = ? AND is_active = 1", (bot_id,))
         bot_row = await cursor.fetchone()
         if not bot_row:
             return
-
-        flow_cursor = await db.execute(
-            "SELECT nodes FROM flows WHERE bot_id = ? AND is_active = 1 LIMIT 1", (bot_id,)
-        )
+        flow_cursor = await db.execute("SELECT nodes FROM flows WHERE bot_id = ? AND is_active = 1 LIMIT 1", (bot_id,))
         flow_row = await flow_cursor.fetchone()
         if not flow_row or not flow_row["nodes"]:
             return
-
         nodes = json.loads(flow_row["nodes"])
         tg_commands = []
         for n in nodes:
             if n.get("type") == "trigger_command":
                 raw_cmd = n.get("data", {}).get("command", "").lstrip("/").strip()
-                desc = n.get("data", {}).get("description", "Bot Command").strip()
+                desc = n.get("data", {}).get("description", "Bot command").strip()
                 if raw_cmd:
                     tg_commands.append(types.BotCommand(command=raw_cmd, description=desc))
-
-        if tg_commands:
+        if tg_commands and bot_row["token"]:
             settings_dict = json.loads(bot_row["settings"]) if bot_row["settings"] else {}
-            session = self.get_api_session(
-                settings_dict.get("cf_worker_url"), settings_dict.get("custom_proxy")
-            )
+            session = self.get_api_session(settings_dict.get("cf_worker_url"), settings_dict.get("custom_proxy"))
             bot = Bot(token=bot_row["token"], session=session)
             try:
                 await bot.set_my_commands(tg_commands)
-                logger.info(f"Successfully synced {len(tg_commands)} commands to bot @{bot_id}")
+                logger.info(f"Synced {len(tg_commands)} commands to bot #{bot_id}")
             except Exception as e:
                 logger.warning(f"Could not sync commands for bot {bot_id}: {e}")
             finally:
-                await bot.session.close()
+                try:
+                    await bot.session.close()
+                except Exception:
+                    pass
+
 
 bot_manager = BotManager()

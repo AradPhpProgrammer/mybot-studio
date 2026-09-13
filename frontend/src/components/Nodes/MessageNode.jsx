@@ -1,77 +1,65 @@
 import React from 'react';
-import { Handle, Position } from '@xyflow/react';
-import { Send, Image, Video, Mic, FileText, Sparkles, MessageCircle } from 'lucide-react';
+import { Handle, Position, useReactFlow } from '@xyflow/react';
+import { Send, Image, Video, Mic, FileText } from 'lucide-react';
 
-const MEDIA_ICONS = {
-  text: Send,
-  photo: Image,
-  video: Video,
-  voice: Mic,
-  document: FileText
-};
+const MEDIA_ICONS = { text: Send, photo: Image, video: Video, voice: Mic, document: FileText };
+const MEDIA_TYPES = ['text', 'photo', 'video', 'voice', 'document'];
 
 export default function MessageNode({ data, selected }) {
+  const { setNodes } = useReactFlow();
+  const update = (field, value) => setNodes(nds => nds.map(n => n.id === data.id ? { ...n, data: { ...n.data, [field]: value } } : n));
+
   const mediaType = data.media_type || 'text';
   const Icon = MEDIA_ICONS[mediaType] || Send;
   const buttons = data.buttons || [];
+  const keyboardType = data.keyboard_type || 'inline';
 
   return (
-    <div
-      className={`min-w-[260px] max-w-[320px] rounded-xl border bg-surface/95 backdrop-blur-md shadow-lg transition-all duration-200 ${
-        selected ? 'border-accent ring-2 ring-accent/40 shadow-accent/10' : 'border-border hover:border-muted'
-      }`}
-    >
-      {/* Input Handle */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="exec"
-        className="!w-3 !h-3 !bg-blue-500 !border-2 !border-surface transition-transform hover:scale-125"
-      />
+    <div className={`min-w-[300px] rounded-xl border bg-surface shadow-lg transition-all ${selected ? 'border-blue-500 ring-2 ring-blue-500/40' : 'border-border hover:border-muted'}`}>
+      <Handle type="target" position={Position.Left} id="exec" className="!w-3 !h-3 !bg-blue-500 !border-2 !border-surface cursor-crosshair" />
 
-      {/* Header */}
-      <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border/70 bg-surface-secondary/50 rounded-t-xl">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-500">
-            <Icon size={15} />
-          </div>
-          <div>
-            <div className="text-[10px] uppercase font-bold tracking-wider text-blue-500">Message / Media</div>
-            <div className="text-xs font-semibold text-foreground capitalize">{mediaType} Message</div>
-          </div>
+      <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border bg-surface-secondary/50 rounded-t-xl">
+        <div className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-500">
+          <Icon size={15} />
         </div>
-        {data.expandable_quote && (
-          <span className="text-[9px] px-2 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent font-medium">
-            Expandable
-          </span>
-        )}
+        <div className="flex-1">
+          <div className="text-[10px] uppercase font-bold tracking-wider text-blue-500">Message / Media</div>
+          <div className="text-xs font-semibold text-foreground capitalize">{mediaType} message</div>
+        </div>
+        {/* Keyboard type dropdown */}
+        <select value={keyboardType} onChange={e => update('keyboard_type', e.target.value)}
+          className="text-[9px] px-1.5 py-0.5 rounded-lg bg-surface border border-border text-foreground font-mono uppercase outline-none focus:border-blue-500">
+          <option value="inline">Inline</option>
+          <option value="reply">Reply</option>
+        </select>
       </div>
 
-      {/* Body */}
       <div className="p-3 space-y-2">
-        <p className="text-xs text-foreground/80 line-clamp-2 leading-relaxed bg-surface-tertiary/50 p-2 rounded-lg border border-border/40">
-          {data.text || <span className="italic text-muted">بدون متن...</span>}
-        </p>
+        {/* Media type dropdown */}
+        <select value={mediaType} onChange={e => update('media_type', e.target.value)}
+          className="w-full px-2 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] text-foreground outline-none focus:border-blue-500">
+          {MEDIA_TYPES.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
+        </select>
 
-        {/* Inline Buttons Preview */}
+        <textarea value={data.text || ''} onChange={e => update('text', e.target.value)} rows={2} placeholder="Message text / caption"
+          className="w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] text-foreground leading-relaxed outline-none focus:border-blue-500 resize-none" />
+
+        {mediaType !== 'text' && (
+          <input type="text" value={data.media_url || ''} onChange={e => update('media_url', e.target.value)} placeholder="https://... or file_id"
+            className="w-full px-2.5 py-1.5 rounded-lg bg-surface-tertiary border border-border text-[11px] font-mono text-foreground outline-none focus:border-blue-500" />
+        )}
+
+        {/* Buttons preview */}
         {buttons.length > 0 && (
-          <div className="space-y-1 pt-1">
+          <div className="space-y-1 pt-1 border-t border-border">
             {buttons.map((row, rIdx) => (
               <div key={rIdx} className="flex gap-1">
                 {row.map((btn, bIdx) => {
-                  let btnColor = 'bg-surface-secondary border-border text-foreground';
-                  if (btn.style === 'primary') btnColor = 'bg-blue-600/20 border-blue-500/50 text-blue-400 font-semibold';
-                  if (btn.style === 'success') btnColor = 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400 font-semibold';
-                  if (btn.style === 'danger') btnColor = 'bg-red-600/20 border-red-500/50 text-red-400 font-semibold';
-
-                  return (
-                    <div
-                      key={bIdx}
-                      className={`flex-1 text-center py-1 px-1.5 rounded text-[10px] border truncate shadow-xs ${btnColor}`}
-                    >
-                      {btn.text || 'دکمه'}
-                    </div>
-                  );
+                  let c = 'bg-surface-secondary border-border text-foreground';
+                  if (btn.style === 'primary') c = 'bg-blue-600/20 border-blue-500/50 text-blue-400 font-semibold';
+                  if (btn.style === 'success') c = 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400 font-semibold';
+                  if (btn.style === 'danger') c = 'bg-red-600/20 border-red-500/50 text-red-400 font-semibold';
+                  return <div key={bIdx} className={`flex-1 text-center py-1 px-1.5 rounded text-[10px] border truncate ${c}`}>{btn.text || 'Button'}</div>;
                 })}
               </div>
             ))}
@@ -79,13 +67,7 @@ export default function MessageNode({ data, selected }) {
         )}
       </div>
 
-      {/* Output Handle */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="exec"
-        className="!w-3 !h-3 !bg-blue-500 !border-2 !border-surface transition-transform hover:scale-125"
-      />
+      <Handle type="source" position={Position.Right} id="exec" className="!w-3 !h-3 !bg-blue-500 !border-2 !border-surface cursor-crosshair" />
     </div>
   );
 }

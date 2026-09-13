@@ -112,3 +112,35 @@ body {
 /* Canvas Themes */
 .dark-canvas .react-flow__background { background-color: #1a1f2e; }
 .light-canvas .react-flow__background { background-color: #e8eaf0; }
+
+/* ============================================================
+   THEME-OPACITY NORMALIZATION
+   Tailwind cannot apply /opacity to CSS-variable (oklch) colors,
+   which breaks bg-surface/95, border-border/70, text-foreground/80
+   in dark mode (rendering variable/transparent -> unreadable text).
+   These overrides force solid, theme-correct rendering.
+   ============================================================ */
+
+/* Surface backgrounds -> enforce solid surface */
+.bg-surface\/95, .bg-surface\/90, .bg-surface\/85, .bg-surface\/80, .bg-surface\/70, .bg-surface\/60, .bg-surface\/50, .bg-surface\/40, .bg-surface\/30 {
+  background-color: var(--surface) !important;
+}
+.bg-surface-secondary\/90, .bg-surface-secondary\/80, .bg-surface-secondary\/60, .bg-surface-secondary\/50, .bg-surface-secondary\/40 {
+  background-color: var(--surface-secondary) !important;
+}
+.bg-surface-tertiary\/70, .bg-surface-tertiary\/60, .bg-surface-tertiary\/50, .bg-surface-tertiary\/40 {
+  background-color: var(--surface-tertiary) !important;
+}
+
+/* Borders -> enforce solid border color */
+.border-border\/80, .border-border\/70, .border-border\/60, .border-border\/50, .border-border\/40, .border-border\/30 {
+  border-color: var(--border) !important;
+}
+
+/* Text foreground with opacity -> force solid foreground */
+.text-foreground\/90, .text-foreground\/80, .text-foreground\/70, .text-foreground\/60 {
+  color: var(--foreground) !important;
+}
+.text-muted\/80, .text-muted\/60 {
+  color: var(--muted) !important;
+}

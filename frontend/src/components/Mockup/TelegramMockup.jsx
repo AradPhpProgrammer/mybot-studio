@@ -40,10 +40,10 @@ export default function TelegramMockup({
     {
       id: 1,
       sender: 'bot',
-      text: 'سلام! من ربات مای‌بات هستم 👋\nبرای شروع، دستور /start را ارسال کنید یا دکمه‌های زیر را بزنید.',
+      text: t('mockup.welcome_msg'),
       reply_markup: {
         inline_keyboard: [
-          [{ text: '🚀 شروع /start', callback_data: '/start', style: 'primary' }]
+          [{ text: t('mockup.start_btn'), callback_data: '/start', style: 'primary' }]
         ]
       }
     }
@@ -243,7 +243,7 @@ export default function TelegramMockup({
             <div className="space-y-3">
               {/* Media Type Switch */}
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-foreground">نوع پیام:</span>
+                <span className="text-xs font-semibold text-foreground">{t('inspector.media_type')}:</span>
                 <select
                   value={selectedNode.data.media_type || 'text'}
                   onChange={(e) =>
@@ -264,14 +264,14 @@ export default function TelegramMockup({
 
               {/* Text Input */}
               <div className="space-y-1">
-                <label className="text-[11px] font-medium text-muted">متن پیام یا کپشن (HTML پشتیبانی می‌شود):</label>
+                <label className="text-[11px] font-medium text-muted">{t('mockup.text_label')}:</label>
                 <textarea
                   rows={4}
                   value={selectedNode.data.text || ''}
                   onChange={(e) =>
                     onUpdateNodeData(selectedNode.id, { ...selectedNode.data, text: e.target.value })
                   }
-                  placeholder="متن پیام خود را بنویسید..."
+                  placeholder={t('mockup.type_message')}
                   className="w-full bg-surface-secondary border border-border rounded-xl p-2.5 text-xs text-foreground placeholder:text-field-placeholder outline-none focus:border-accent resize-none font-sans"
                 />
               </div>
@@ -279,7 +279,7 @@ export default function TelegramMockup({
               {/* Telegram Preview Bubble */}
               <div className="p-3 rounded-xl bg-surface border border-border shadow-inner space-y-2">
                 <div className="text-[10px] uppercase font-bold text-muted tracking-wider">
-                  پیش‌نمایش در چت تلگرام:
+                  {t('mockup.preview_label')}:
                 </div>
                 <div className="p-3 rounded-2xl rounded-br-xs bg-blue-600/15 border border-blue-500/30 text-xs leading-relaxed text-foreground">
                   <div
@@ -301,9 +301,9 @@ export default function TelegramMockup({
           ) : (
             <div className="h-full flex flex-col items-center justify-center p-6 text-center text-muted space-y-2">
               <Layers size={32} className="opacity-40" />
-              <div className="text-xs font-semibold text-foreground">هیچ نود پیامی انتخاب نشده است</div>
+              <div className="text-xs font-semibold text-foreground">{t('mockup.no_node_selected')}</div>
               <p className="text-[11px] leading-relaxed">
-                برای ویرایش متن و دکمه‌ها در پیش‌نمایش، روی یکی از نودهای «ارسال پیام» در بوم کلیک کنید.
+                {t('mockup.no_node_selected_desc')}
               </p>
             </div>
           )}
@@ -366,7 +366,7 @@ export default function TelegramMockup({
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" />
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:0.2s]" />
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:0.4s]" />
-                <span className="text-[11px] ms-1">در حال تایپ...</span>
+                <span className="text-[11px] ms-1">{t('mockup.typing')}</span>
               </div>
             )}
             <div ref={chatBottomRef} />
@@ -386,7 +386,7 @@ export default function TelegramMockup({
               title="پاک کردن تاریخچه چت"
             >
               <RotateCcw size={10} />
-              <span>پاکسازی</span>
+              <span>{t('mockup.clear_chat')}</span>
             </button>
           </div>
 
