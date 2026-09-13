@@ -3,13 +3,14 @@ import { createContext, useContext, useState, useEffect } from 'react';
 const FontContext = createContext(null);
 
 export const AVAILABLE_FONTS = [
+  { id: 'arad', name: 'Arad (آراد)', family: "'Arad', sans-serif" },
   { id: 'vazirmatn', name: 'Vazirmatn (وزیرمتن)', family: "'Vazirmatn', sans-serif" },
   { id: 'inter', name: 'Inter (Latin)', family: "'Inter', sans-serif" },
   { id: 'jetbrains-mono', name: 'JetBrains Mono', family: "'JetBrains Mono', monospace" }
 ];
 
 export function FontProvider({ children }) {
-  const [currentFont, setCurrentFont] = useState(() => localStorage.getItem('mybot_font') || 'vazirmatn');
+  const [currentFont, setCurrentFont] = useState(() => localStorage.getItem('mybot_font') || 'arad');
 
   useEffect(() => {
     localStorage.setItem('mybot_font', currentFont);

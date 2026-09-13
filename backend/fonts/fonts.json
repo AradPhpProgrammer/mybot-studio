@@ -1,0 +1,30 @@
+[
+  {
+    "id": "arad",
+    "name": "Arad (آراد)",
+    "family": "'Arad', 'Vazirmatn', sans-serif",
+    "category": "persian",
+    "css_url": "/fonts/AradVF.woff2"
+  },
+  {
+    "id": "vazirmatn",
+    "name": "Vazirmatn (وزیرمتن)",
+    "family": "'Vazirmatn', -apple-system, BlinkMacSystemFont, sans-serif",
+    "category": "persian",
+    "css_url": "https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css"
+  },
+  {
+    "id": "inter",
+    "name": "Inter",
+    "family": "'Inter', sans-serif",
+    "category": "latin",
+    "css_url": "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+  },
+  {
+    "id": "jetbrains-mono",
+    "name": "JetBrains Mono",
+    "family": "'JetBrains Mono', monospace",
+    "category": "monospace",
+    "css_url": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap"
+  }
+]

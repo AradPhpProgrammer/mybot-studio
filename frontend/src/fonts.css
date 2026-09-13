@@ -1,0 +1,8 @@
+/* Arad Variable Font (variable Persian/Arabic font by Mohamad Darvishi) */
+@font-face {
+  font-family: 'Arad';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/AradVF.woff2') format('woff2');
+}

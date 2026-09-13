@@ -13,6 +13,13 @@ FONTS_CONFIG = FONTS_DIR / "fonts.json"
 
 DEFAULT_FONTS = [
     {
+        "id": "arad",
+        "name": "Arad (آراد)",
+        "family": "'Arad', 'Vazirmatn', sans-serif",
+        "category": "persian",
+        "css_url": "/fonts/AradVF.woff2"
+    },
+    {
         "id": "vazirmatn",
         "name": "Vazirmatn (وزیرمتن)",
         "family": "'Vazirmatn', -apple-system, BlinkMacSystemFont, sans-serif",
