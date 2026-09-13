@@ -19,6 +19,7 @@ import { useI18n } from '../../locales/i18n';
 import RichTextToolbar from './RichTextToolbar';
 import KeyboardEditor from './KeyboardEditor';
 import { api } from '../../services/api';
+import VariableTextArea, { HighlightedText } from '../Variables/VariableTextArea';
 
 export default function TelegramMockup({
   currentBot,
@@ -99,10 +100,9 @@ export default function TelegramMockup({
     if (!selectedNode || selectedNode.type !== 'action_send_message') return;
     const tableStr = `<pre>
 ┌────────┬────────┐
-│ آیتم   │ قیمت   │
+│ Plan A │ 10,000 │
 ├────────┼────────┤
-│ پلن A  │ 10,000 │
-│ پلن B  │ 20,000 │
+│ Plan B │ 20,000 │
 └────────┴────────┘
 </pre>`;
     const currentText = selectedNode.data.text || '';
@@ -124,7 +124,7 @@ export default function TelegramMockup({
       const res = await api.dispatchSimulator(currentBot.id, eventType, payload, {
         id: 99999999,
         username: 'tester',
-        first_name: 'تستر'
+        first_name: 'Tester'
       });
 
       setIsTyping(false);
@@ -149,7 +149,7 @@ export default function TelegramMockup({
       setIsTyping(false);
       setSimMessages(prev => [
         ...prev,
-        { id: Date.now(), sender: 'bot', text: `⚠️ خطا در شبیه‌ساز: ${err.message}` }
+        { id: Date.now(), sender: 'bot', text: `⚠️ ${t('common.error')}: ${err.message}` }
       ]);
     }
   };
@@ -204,7 +204,7 @@ export default function TelegramMockup({
                 activeTab === 'edit' ? 'bg-accent text-accent-foreground font-semibold' : 'text-muted hover:text-foreground'
               }`}
             >
-              ویرایش
+              {t('mockup.edit_tab') || 'Edit'}
             </button>
             <button
               onClick={() => setActiveTab('simulator')}
@@ -212,7 +212,7 @@ export default function TelegramMockup({
                 activeTab === 'simulator' ? 'bg-accent text-accent-foreground font-semibold' : 'text-muted hover:text-foreground'
               }`}
             >
-              تست چت
+              {t('mockup.test_tab') || 'Test Chat'}
             </button>
           </div>
 
@@ -251,11 +251,11 @@ export default function TelegramMockup({
                   }
                   className="bg-surface-secondary px-2 py-1 rounded-lg text-xs text-foreground border border-border outline-none"
                 >
-                  <option value="text">📝 متن (Text)</option>
-                  <option value="photo">🖼 عکس (Photo)</option>
-                  <option value="video">🎬 ویدیو (Video)</option>
-                  <option value="voice">🎙 ویس (Voice)</option>
-                  <option value="document">📁 فایل (Document)</option>
+                  <option value="text">{t('mockup.media_types.text') || 'Text'}</option>
+                  <option value="photo">{t('mockup.media_types.photo') || 'Photo'}</option>
+                  <option value="video">{t('mockup.media_types.video') || 'Video'}</option>
+                  <option value="voice">{t('mockup.media_types.voice') || 'Voice'}</option>
+                  <option value="document">{t('mockup.media_types.document') || 'Document'}</option>
                 </select>
               </div>
 
@@ -265,12 +265,10 @@ export default function TelegramMockup({
               {/* Text Input */}
               <div className="space-y-1">
                 <label className="text-[11px] font-medium text-muted">{t('mockup.text_label')}:</label>
-                <textarea
+                <VariableTextArea
                   rows={4}
                   value={selectedNode.data.text || ''}
-                  onChange={(e) =>
-                    onUpdateNodeData(selectedNode.id, { ...selectedNode.data, text: e.target.value })
-                  }
+                  onChange={(v) => onUpdateNodeData(selectedNode.id, { ...selectedNode.data, text: v })}
                   placeholder={t('mockup.type_message')}
                   className="w-full bg-surface-secondary border border-border rounded-xl p-2.5 text-xs text-foreground placeholder:text-field-placeholder outline-none focus:border-accent resize-none font-sans"
                 />
@@ -282,11 +280,11 @@ export default function TelegramMockup({
                   {t('mockup.preview_label')}:
                 </div>
                 <div className="p-3 rounded-2xl rounded-br-xs bg-blue-600/15 border border-blue-500/30 text-xs leading-relaxed text-foreground">
-                  <div
-                    dangerouslySetInnerHTML={{
-                      __html: selectedNode.data.text || '<span class="text-muted">بدون متن...</span>'
-                    }}
-                  />
+                  {selectedNode.data.text ? (
+                    <HighlightedText text={selectedNode.data.text} />
+                  ) : (
+                    <span className="text-muted italic">{t('common.add')}...</span>
+                  )}
                 </div>
               </div>
 
@@ -383,7 +381,7 @@ export default function TelegramMockup({
             <button
               onClick={() => setSimMessages([])}
               className="px-2 py-0.5 rounded-full bg-surface border border-border text-muted hover:text-foreground flex items-center gap-1 ms-auto"
-              title="پاک کردن تاریخچه چت"
+              title={t('mockup.clear_history') || 'Clear Chat History'}
             >
               <RotateCcw size={10} />
               <span>{t('mockup.clear_chat')}</span>

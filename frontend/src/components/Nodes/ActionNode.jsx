@@ -2,9 +2,10 @@ import React from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Database, Clock, Globe, BellRing } from 'lucide-react';
 
-export default function ActionNode({ data, selected, type }) {
+export default function ActionNode({ id, data, selected, type }) {
   const { setNodes } = useReactFlow();
-  const update = (field, value) => setNodes(nds => nds.map(n => n.id === data.id ? { ...n, data: { ...n.data, [field]: value } } : n));
+  const nodeId = id || data?.id;
+  const update = (field, value) => setNodes(nds => nds.map(n => n.id === nodeId ? { ...n, data: { ...n.data, [field]: value } } : n));
 
   const isHttp = type === 'action_http_request';
   const isDelay = type === 'action_delay';

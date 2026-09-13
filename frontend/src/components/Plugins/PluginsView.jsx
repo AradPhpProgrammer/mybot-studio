@@ -63,7 +63,7 @@ export default function PluginsView() {
           <div className="space-y-1">
             <h1 className="text-xl font-bold text-foreground">{t('sidebar.plugins')}</h1>
             <p className="text-xs text-muted">
-              مدیریت و فعال‌سازی پلاگین‌های جعبه‌ابزار و ابزارهای پنل مدیریت
+              {t('plugins.manage_subtitle') || 'Manage and activate canvas toolbox and admin extensions'}
             </p>
           </div>
 
@@ -83,11 +83,11 @@ export default function PluginsView() {
         {loading ? (
           <div className="flex items-center justify-center py-20 text-xs text-muted gap-2">
             <Loader2 size={16} className="animate-spin" />
-            <span>در حال بارگذاری پلاگین‌ها...</span>
+            <span>{t('plugins.loading') || 'Loading...'}</span>
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-xs text-muted bg-surface rounded-2xl border border-border">
-            پلاگینی یافت نشد.
+            {t('plugins.no_plugins') || 'No plugins found.'}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -106,14 +106,14 @@ export default function PluginsView() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-foreground">
-                            {lang === 'fa' ? plugin.name_fa : plugin.name}
+                            {lang === 'fa' ? (plugin.name_fa || plugin.name) : plugin.name}
                           </span>
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-surface-secondary text-muted border border-border">
                             v{plugin.version}
                           </span>
                         </div>
                         <span className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
-                          {plugin.plugin_type === 'admin' ? 'پنل ادمین' : 'جعبه‌ابزار بوم'}
+                          {plugin.plugin_type === 'admin' ? t('plugins.admin_type') : t('plugins.canvas_type')}
                         </span>
                       </div>
                     </div>

@@ -37,6 +37,9 @@ export default {
       borderRadius: {
         DEFAULT: 'var(--radius)',
         field: 'var(--field-radius)',
+      },
+      fontFamily: {
+        sans: ['var(--font-sans)', 'sans-serif'],
       }
     },
   },

@@ -60,6 +60,12 @@ export const api = {
     });
     return res.json();
   },
+  async toggleBotActive(botId) {
+    const res = await fetch(`${API_BASE}/bots/${botId}/toggle-active`, {
+      method: 'POST'
+    });
+    return res.json();
+  },
   async deleteBot(botId) {
     const res = await fetch(`${API_BASE}/bots/${botId}`, { method: 'DELETE' });
     return res.json();

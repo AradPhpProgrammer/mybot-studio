@@ -68,8 +68,8 @@ export default function PluginsModal({ isOpen, onClose, currentBot }) {
               <Puzzle size={18} />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-foreground">{t('navbar.plugins')} (مدیریت افزونه‌ها)</h2>
-              <p className="text-[11px] text-muted">افزونه‌های جعبه‌ابزار و ابزارهای مدیریتی سیستم وردپرسی مای‌بات</p>
+              <h2 className="text-sm font-bold text-foreground">{t('plugins.modal_title') || t('navbar.plugins')}</h2>
+              <p className="text-[11px] text-muted">{t('plugins.modal_subtitle')}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-muted hover:text-foreground">
@@ -82,7 +82,7 @@ export default function PluginsModal({ isOpen, onClose, currentBot }) {
           {loading ? (
             <div className="flex items-center justify-center py-12 text-xs text-muted gap-2">
               <Loader2 size={16} className="animate-spin" />
-              <span>در حال بارگذاری پلاگین‌ها...</span>
+              <span>{t('plugins.loading')}</span>
             </div>
           ) : (
             plugins.map(plugin => {
@@ -99,17 +99,17 @@ export default function PluginsModal({ isOpen, onClose, currentBot }) {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-foreground">
-                          {lang === 'fa' ? plugin.name_fa : plugin.name}
+                          {lang === 'fa' ? (plugin.name_fa || plugin.name) : plugin.name}
                         </span>
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-surface text-muted border border-border">
                           v{plugin.version}
                         </span>
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-medium">
-                          {plugin.plugin_type === 'admin' ? 'پنل ادمین' : 'جعبه‌ابزار بوم'}
+                          {plugin.plugin_type === 'admin' ? t('plugins.admin_type') : t('plugins.canvas_type')}
                         </span>
                       </div>
                       <p className="text-[11px] text-muted leading-relaxed">
-                        {lang === 'fa' ? plugin.description_fa : plugin.description}
+                        {lang === 'fa' ? (plugin.description_fa || plugin.description) : plugin.description}
                       </p>
                     </div>
                   </div>

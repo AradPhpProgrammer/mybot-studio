@@ -4,13 +4,14 @@ import { Play, Terminal, MousePointerClick, MessageSquare } from 'lucide-react';
 
 const ICON_MAP = { trigger_start: Play, trigger_command: Terminal, trigger_callback: MousePointerClick, trigger_message: MessageSquare };
 
-export default function TriggerNode({ data, selected, type }) {
+export default function TriggerNode({ id, data, selected, type }) {
   const { setNodes } = useReactFlow();
   const Icon = ICON_MAP[type] || Play;
   const isStart = type === 'trigger_start';
   const isCommand = type === 'trigger_command';
 
-  const update = (field, value) => setNodes(nds => nds.map(n => n.id === data.id ? { ...n, data: { ...n.data, [field]: value } } : n));
+  const nodeId = id || data?.id;
+  const update = (field, value) => setNodes(nds => nds.map(n => n.id === nodeId ? { ...n, data: { ...n.data, [field]: value } } : n));
 
   const cmd = isCommand ? (data.command || '') : (isStart ? '/start' : (data.callback_data || 'btn_action'));
 

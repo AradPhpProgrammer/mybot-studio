@@ -15,6 +15,7 @@ export function FontProvider({ children }) {
     localStorage.setItem('mybot_font', currentFont);
     const fontObj = AVAILABLE_FONTS.find(f => f.id === currentFont) || AVAILABLE_FONTS[0];
     document.documentElement.style.setProperty('--font-sans', fontObj.family);
+    document.body.style.fontFamily = fontObj.family;
   }, [currentFont]);
 
   return (

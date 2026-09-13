@@ -65,21 +65,38 @@ async def get_bot(bot_id: int, db: aiosqlite.Connection = Depends(get_db)):
 
 @router.put("/{bot_id}/settings")
 async def update_bot_settings(bot_id: int, req: BotSettingsUpdate, db: aiosqlite.Connection = Depends(get_db)):
-    cursor = await db.execute("SELECT settings FROM bots WHERE id = ?", (bot_id,))
+    cursor = await db.execute("SELECT id, name, is_active, settings FROM bots WHERE id = ?", (bot_id,))
     bot = await cursor.fetchone()
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")
         
     current = json.loads(bot["settings"]) if bot["settings"] else {}
     update_data = req.model_dump(exclude_unset=True)
+    
+    name_val = update_data.pop("name", None)
+    is_active_val = update_data.pop("is_active", None)
     current.update(update_data)
     
+    new_name = name_val if name_val is not None else bot["name"]
+    new_active = int(is_active_val) if is_active_val is not None else bot["is_active"]
+
     await db.execute(
-        "UPDATE bots SET settings = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        (json.dumps(current), bot_id)
+        "UPDATE bots SET name = ?, is_active = ?, settings = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (new_name, new_active, json.dumps(current), bot_id)
     )
     await db.commit()
-    return {"success": True, "settings": current}
+    return {"success": True, "name": new_name, "is_active": bool(new_active), "settings": current}
+
+@router.post("/{bot_id}/toggle-active")
+async def toggle_bot_active(bot_id: int, db: aiosqlite.Connection = Depends(get_db)):
+    cursor = await db.execute("SELECT is_active FROM bots WHERE id = ?", (bot_id,))
+    bot = await cursor.fetchone()
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+    new_state = 0 if bot["is_active"] else 1
+    await db.execute("UPDATE bots SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (new_state, bot_id))
+    await db.commit()
+    return {"success": True, "is_active": bool(new_state)}
 
 @router.delete("/{bot_id}")
 async def delete_bot(bot_id: int, db: aiosqlite.Connection = Depends(get_db)):

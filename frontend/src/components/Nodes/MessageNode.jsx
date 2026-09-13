@@ -1,13 +1,15 @@
 import React from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Send, Image, Video, Mic, FileText } from 'lucide-react';
+import VariableTextArea, { HighlightedText } from '../Variables/VariableTextArea';
 
 const MEDIA_ICONS = { text: Send, photo: Image, video: Video, voice: Mic, document: FileText };
 const MEDIA_TYPES = ['text', 'photo', 'video', 'voice', 'document'];
 
-export default function MessageNode({ data, selected }) {
+export default function MessageNode({ id, data, selected }) {
   const { setNodes } = useReactFlow();
-  const update = (field, value) => setNodes(nds => nds.map(n => n.id === data.id ? { ...n, data: { ...n.data, [field]: value } } : n));
+  const nodeId = id || data?.id;
+  const update = (field, value) => setNodes(nds => nds.map(n => n.id === nodeId ? { ...n, data: { ...n.data, [field]: value } } : n));
 
   const mediaType = data.media_type || 'text';
   const Icon = MEDIA_ICONS[mediaType] || Send;
@@ -41,8 +43,13 @@ export default function MessageNode({ data, selected }) {
           {MEDIA_TYPES.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
         </select>
 
-        <textarea value={data.text || ''} onChange={e => update('text', e.target.value)} rows={2} placeholder="Message text / caption"
-          className="w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] text-foreground leading-relaxed outline-none focus:border-blue-500 resize-none" />
+        <VariableTextArea value={data.text || ''} onChange={(v) => update('text', v)} rows={2} placeholder="Message text / caption (type $ for variables)" className="w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] text-foreground leading-relaxed outline-none focus:border-blue-500 resize-none" />
+
+        {data.text && data.text.includes('$') && (
+          <div className="px-2.5 py-1.5 rounded-lg bg-surface-tertiary/60 border border-orange-500/20 text-[11px] text-foreground">
+            <HighlightedText text={data.text} />
+          </div>
+        )}
 
         {mediaType !== 'text' && (
           <input type="text" value={data.media_url || ''} onChange={e => update('media_url', e.target.value)} placeholder="https://... or file_id"

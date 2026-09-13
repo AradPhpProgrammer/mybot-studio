@@ -18,12 +18,18 @@ class BotCreateRequest(BaseModel):
     cf_worker_url: Optional[str] = None
 
 class BotSettingsUpdate(BaseModel):
-    auto_chat_action: Optional[bool] = True
-    typing_delay_ms: Optional[int] = 500
+    name: Optional[str] = None
+    bio: Optional[str] = None
+    description: Optional[str] = None
+    is_miniapp_enabled: Optional[bool] = None
+    miniapp_url: Optional[str] = None
+    auto_chat_action: Optional[bool] = None
+    typing_delay_ms: Optional[int] = None
     custom_proxy: Optional[str] = None
     cf_worker_url: Optional[str] = None
-    default_language: Optional[str] = "fa"
-    sync_commands_automatically: Optional[bool] = True
+    default_language: Optional[str] = None
+    sync_commands_automatically: Optional[bool] = None
+    is_active: Optional[bool] = None
 
 class BotResponse(BaseModel):
     id: int

@@ -91,23 +91,64 @@ def safe_eval(expr: str, context: Dict[str, Any]) -> Any:
         logger.warning(f"Error evaluating condition '{expr}': {e}")
         return False
 
+def _resolve_value(key: str, context: Dict[str, Any]) -> Any:
+    """Resolve a dotted key against context (dict traversal / attr)."""
+    parts = key.strip().split(".")
+    val = context
+    for p in parts:
+        if isinstance(val, dict):
+            val = val.get(p, "")
+        else:
+            val = getattr(val, p, "")
+    return "" if val is None else val
+
+
 def render_variables(text: str, context: Dict[str, Any]) -> str:
-    """Replaces {var} and {user.var} placeholders in text strings."""
+    """
+    Replaces placeholders in message text:
+      {var} / {user.score}   -> legacy brace syntax (kept for compat)
+      $first_name            -> dollar variable syntax; first token resolves against
+                                context keys (first_name, username, id, balance,
+                                user.*, etc.). If the first token equals 'user',
+                                the rest is a dotted path into the user dict.
+      $$anything             -> escaped: renders literally as '"$anything"'
+                                (a single preceding "$" turns into a literal $).
+    """
     if not text:
         return ""
-    
-    def repl(match):
-        key = match.group(1).strip()
-        parts = key.split(".")
-        val = context
-        for p in parts:
-            if isinstance(val, dict):
-                val = val.get(p, "")
-            else:
-                val = getattr(val, p, "")
-        return str(val) if val is not None else ""
 
-    return re.sub(r"\{([^{}]+)\}", repl, text)
+    def repl_brace(m):
+        return str(_resolve_value(m.group(1), context))
+
+    def repl_dollar(m):
+        raw = m.group(1)  # content after $, e.g. "first_name" or "user.balance"
+        if raw == "":
+            return "$"
+        # Builtin aliases (so $id, $name, $first, $last, $username all work)
+        first_token = raw.split(".")[0].lower()
+        aliases = {
+            "id": "telegram_id",
+            "user_id": "telegram_id",
+            "uid": "telegram_id",
+            "name": "first_name",
+            "first": "first_name",
+            "firstname": "first_name",
+            "last": "last_name",
+            "lastname": "last_name",
+        }
+        if first_token in aliases:
+            raw = aliases[first_token] + raw[len(first_token):]
+        return str(_resolve_value(raw, context))
+
+    # First: handle brace placeholders (legacy)
+    out = re.sub(r"\{([^{}]+)\}", repl_brace, text)
+    # Then: handle $$ escaping FIRST to protect literals, using a sentinel
+    out = out.replace("$$", "\x00")
+    # Then: $var (bare word or dotted path: $foo.bar)
+    out = re.sub(r"\$([A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)*)", repl_dollar, out)
+    # Restore literal $ for $$ esc
+    out = out.replace("\x00", "$")
+    return out
 
 
 class DAGRunner:
@@ -329,16 +370,30 @@ class DAGRunner:
                 })
 
             elif ntype == "action_condition":
-                # New format: input_a, operator, input_b (e.g. user.balance, >=, 100)
-                raw_a = render_variables(str(data.get("input_a", "") or "0"), context)
-                raw_b = render_variables(str(data.get("input_b", "") or "0"), context)
+                # New format: input_a, operator, input_b (e.g. $balance, >=, 100)
+                ia = str(data.get("input_a", "") or "0")
+                ib = str(data.get("input_b", "") or "0")
                 op = data.get("operator", ">=")
+
+                # Resolve input values: support $var/${var}/user.path AND bare "user.path"
+                def resolve_input(raw):
+                    if not raw:
+                        return ""
+                    # 1. render_variables handles $var, {var}, $$ escape
+                    resolved = render_variables(raw, context)
+                    # 2. If still unresolved (bare user.score / first_name), try dotted path
+                    if resolved == raw and re.match(r"^[A-Za-z_][\w.]*$", raw):
+                        resolved = str(_resolve_value(raw, context))
+                    return resolved
+
+                raw_a = resolve_input(ia)
+                raw_b = resolve_input(ib)
                 try:
-                    val_a = float(raw_a) if raw_a else 0.0
+                    val_a = float(raw_a) if raw_a and raw_a != "-0" else 0.0
                 except Exception:
                     val_a = raw_a
                 try:
-                    val_b = float(raw_b) if raw_b else 0.0
+                    val_b = float(raw_b) if raw_b and raw_b != "-0" else 0.0
                 except Exception:
                     val_b = raw_b
 
@@ -432,6 +487,21 @@ class DAGRunner:
                 except Exception as e:
                     logger.warning(f"HTTP node error: {e}")
                     context["variables"][out_var] = {"error": str(e)}
+
+            elif ntype == "action_loop":
+                # Run loop body 'count' times, storing iteration counter
+                count = max(int(data.get("count", 1)), 1)
+                out_var = str(data.get("output_variable", "iteration")).strip() or "iteration"
+                # Following paths run once below (count=1 behavior), then extra iterations appended
+                for iteration in range(1, count):
+                    context["variables"][out_var] = iteration
+                    context["user"][out_var] = iteration
+                    for edge in adj_list.get(node_id, []):
+                        target_id = edge.get("target")
+                        queue.append((target_id, edge.get("targetHandle", "exec")))
+                # Final iteration counter
+                context["variables"][out_var] = count
+                context["user"][out_var] = count
 
             # Follow outgoing edges matching next_handle
             outgoing = adj_list.get(node_id, [])

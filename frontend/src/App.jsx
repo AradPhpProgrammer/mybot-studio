@@ -13,13 +13,13 @@ import SettingsView from './components/Settings/SettingsView';
 import PluginsView from './components/Plugins/PluginsView';
 import BotsList from './components/Dashboard/BotsList';
 import Navbar from './components/Header/Navbar';
+import BotSettingsModal from './components/Header/BotSettingsModal';
 import Canvas from './components/Canvas/Canvas';
 import QuickSearchPalette from './components/QuickSearch/QuickSearchPalette';
 import TelegramMockup from './components/Mockup/TelegramMockup';
 import PluginsModal from './components/Plugins/PluginsModal';
 
 import { useI18n } from './locales/i18n';
-import { useFont } from './fonts/FontContext';
 import { api } from './services/api';
 
 export default function App() {
@@ -29,13 +29,20 @@ export default function App() {
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('mybot_token'));
 
-  // Navigation state
-  const [view, setView] = useState('dashboard'); // 'dashboard' or 'studio'
+  // Navigation state (persisted across refreshes)
+  const [view, setView] = useState(() => localStorage.getItem('mybot_view') || 'dashboard');
   const [sidebarTab, setSidebarTab] = useState('profiles'); // 'profiles', 'plugins', 'settings'
 
-  // Bot & Flow State
+  // Bot & Flow State (persisted across refreshes)
   const [bots, setBots] = useState([]);
-  const [currentBot, setCurrentBot] = useState(null);
+  const [currentBot, setCurrentBot] = useState(() => {
+    try {
+      const raw = localStorage.getItem('mybot_current_bot');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loadingBots, setLoadingBots] = useState(true);
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -48,6 +55,7 @@ export default function App() {
   const [quickSearchOpen, setQuickSearchOpen] = useState(false);
   const [quickSearchPos, setQuickSearchPos] = useState({ x: 200, y: 200 });
   const [pluginsModalOpen, setPluginsModalOpen] = useState(false);
+  const [botSettingsOpen, setBotSettingsOpen] = useState(false);
   const [updateInfo, setUpdateInfo] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [pendingNodePos, setPendingNodePos] = useState(null);
@@ -65,27 +73,6 @@ export default function App() {
     }
   }, [theme]);
 
-  // Load Bots on mount or auth change
-  const loadBots = useCallback(async () => {
-    if (!isAuthenticated) return;
-    try {
-      setLoadingBots(true);
-      const list = await api.getBots();
-      setBots(list);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingBots(false);
-    }
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadBots();
-      api.checkUpdate().then(setUpdateInfo).catch(() => {});
-    }
-  }, [isAuthenticated, loadBots]);
-
   // Load Bot Flow
   const loadBotFlow = useCallback(async (botId) => {
     try {
@@ -100,20 +87,93 @@ export default function App() {
     }
   }, [setNodes, setEdges]);
 
+  // Load Bots on mount or auth change
+  const loadBots = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      setLoadingBots(true);
+      const list = await api.getBots();
+      setBots(list);
+
+      // Verify and sync currentBot from freshly loaded list
+      const savedBotId = localStorage.getItem('mybot_current_bot_id');
+      const savedView = localStorage.getItem('mybot_view');
+      if (savedView === 'studio' && savedBotId) {
+        const found = list.find((b) => String(b.id) === String(savedBotId));
+        if (found) {
+          setCurrentBot(found);
+          localStorage.setItem('mybot_current_bot', JSON.stringify(found));
+        } else if (list.length > 0) {
+          // If stored bot ID was deleted, gracefully return to dashboard
+          setView('dashboard');
+          setCurrentBot(null);
+          localStorage.setItem('mybot_view', 'dashboard');
+          localStorage.removeItem('mybot_current_bot');
+          localStorage.removeItem('mybot_current_bot_id');
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingBots(false);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadBots();
+      api.checkUpdate().then(setUpdateInfo).catch(() => {});
+      
+      // If we were in studio view before refresh, immediately load flow for saved bot
+      const savedBotId = localStorage.getItem('mybot_current_bot_id');
+      const savedView = localStorage.getItem('mybot_view');
+      if (savedView === 'studio' && savedBotId) {
+        loadBotFlow(savedBotId);
+      }
+    }
+  }, [isAuthenticated, loadBots, loadBotFlow]);
+
   const handleSelectBot = (bot) => {
     setCurrentBot(bot);
+    localStorage.setItem('mybot_current_bot', JSON.stringify(bot));
+    localStorage.setItem('mybot_current_bot_id', String(bot.id));
+    localStorage.setItem('mybot_view', 'studio');
     loadBotFlow(bot.id);
     setView('studio');
   };
 
   const handleBackToDashboard = () => {
     setView('dashboard');
+    setCurrentBot(null);
+    localStorage.setItem('mybot_view', 'dashboard');
+    localStorage.removeItem('mybot_current_bot');
+    localStorage.removeItem('mybot_current_bot_id');
     loadBots();
   };
 
   const handleLogout = () => {
     localStorage.removeItem('mybot_token');
+    localStorage.removeItem('mybot_view');
+    localStorage.removeItem('mybot_current_bot');
+    localStorage.removeItem('mybot_current_bot_id');
     setIsAuthenticated(false);
+  };
+
+  const handleUpdateBot = (updatedBot) => {
+    setCurrentBot(updatedBot);
+    localStorage.setItem('mybot_current_bot', JSON.stringify(updatedBot));
+    setBots((prev) => prev.map((b) => (b.id === updatedBot.id ? updatedBot : b)));
+  };
+
+  const handleToggleRunBot = async () => {
+    if (!currentBot) return;
+    try {
+      const res = await api.toggleBotActive(currentBot.id);
+      const updated = { ...currentBot, is_active: res.is_active };
+      handleUpdateBot(updated);
+    } catch (e) {
+      console.error('Error toggling bot run status:', e);
+    }
   };
 
   // Node & Edge Handlers
@@ -202,7 +262,7 @@ export default function App() {
       await api.importFlow(currentBot.id, file);
       loadBotFlow(currentBot.id);
     } catch (err) {
-      alert('خطا در بارگذاری تمپلیت: ' + err.message);
+      alert(t('common.template_error', { error: err.message }) || `Error importing flow: ${err.message}`);
     }
   };
 
@@ -230,15 +290,15 @@ export default function App() {
 
   // Delete node and its connected edges
   const handleDeleteNode = (nodeId) => {
-    setNodes((nds) => nds.filter(n => n.id !== nodeId));
-    setEdges((eds) => eds.filter(e => e.source !== nodeId && e.target !== nodeId));
+    setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+    setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
     if (selectedNode?.id === nodeId) setSelectedNode(null);
     setIsDirty(true);
   };
 
   // Delete a single edge
   const handleDeleteEdge = (edgeId) => {
-    setEdges((eds) => eds.filter(e => e.id !== edgeId));
+    setEdges((eds) => eds.filter((e) => e.id !== edgeId));
     setIsDirty(true);
   };
 
@@ -270,9 +330,14 @@ export default function App() {
   };
 
   const handleDeleteBot = async (botId) => {
-    if (confirm('آیا از حذف این ربات اطمینان دارید؟ تمام جریان‌ها و کاربران آن حذف خواهند شد.')) {
+    const confirmMsg = t('common.confirm_delete_bot') || 'Are you sure you want to delete this bot? All its flows and user data will be deleted.';
+    if (window.confirm(confirmMsg)) {
       await api.deleteBot(botId);
-      loadBots();
+      if (currentBot?.id === botId) {
+        handleBackToDashboard();
+      } else {
+        loadBots();
+      }
     }
   };
 
@@ -324,6 +389,8 @@ export default function App() {
             onExportFlow={handleExportFlow}
             onImportFlow={handleImportFlow}
             onOpenPlugins={() => setPluginsModalOpen(true)}
+            onOpenBotSettings={() => setBotSettingsOpen(true)}
+            onToggleRunBot={handleToggleRunBot}
             updateInfo={updateInfo}
             theme={theme}
             setTheme={setTheme}
@@ -365,6 +432,14 @@ export default function App() {
             isOpen={pluginsModalOpen}
             onClose={() => setPluginsModalOpen(false)}
             currentBot={currentBot}
+          />
+
+          {/* Bot Settings Modal */}
+          <BotSettingsModal
+            isOpen={botSettingsOpen}
+            onClose={() => setBotSettingsOpen(false)}
+            bot={currentBot}
+            onBotUpdated={handleUpdateBot}
           />
         </div>
       )}

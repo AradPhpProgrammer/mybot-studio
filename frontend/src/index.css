@@ -84,8 +84,11 @@
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+body, input, textarea, select, button {
+  font-family: var(--font-sans) !important;
+}
+
 body {
-  font-family: var(--font-sans);
   user-select: none;
   background: var(--background);
   color: var(--foreground);
@@ -103,15 +106,27 @@ body {
 .react-flow__node { cursor: grab; }
 .react-flow__node:active { cursor: grabbing; }
 .react-flow__edge-path { stroke: var(--accent); stroke-width: 2.5; }
-.react-flow__handle { background: var(--muted); border: 2px solid var(--surface); width: 10px; height: 10px; transition: all 0.2s ease; }
-.react-flow__handle:hover, .react-flow__handle-connecting { background: var(--accent); transform: scale(1.2); }
+.react-flow__handle {
+  background: var(--muted);
+  border: 2px solid var(--surface);
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  transition: box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+.react-flow__handle:hover,
+.react-flow__handle-connecting {
+  background: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent);
+  cursor: crosshair;
+}
 .react-flow__edges { pointer-events: all; }
 .react-flow__edge { pointer-events: stroke; cursor: pointer; }
 .react-flow__edge.selected .react-flow__edge-path { stroke: var(--danger); stroke-width: 3; }
 
 /* Canvas Themes */
-.dark-canvas .react-flow__background { background-color: #1a1f2e; }
-.light-canvas .react-flow__background { background-color: #e8eaf0; }
+.dark-canvas .react-flow__background { background-color: #0b1120; }
+.light-canvas .react-flow__background { background-color: #f1f5f9; }
 
 /* ============================================================
    THEME-OPACITY NORMALIZATION

@@ -3,12 +3,11 @@ import {
   Bot, 
   Save, 
   Play, 
+  Pause,
   Download, 
   Upload, 
   Maximize2, 
   Minimize2, 
-  Globe, 
-  Type, 
   Sun, 
   Moon, 
   Puzzle, 
@@ -18,10 +17,10 @@ import {
   Sparkles,
   ArrowLeft,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Settings as SettingsIcon
 } from 'lucide-react';
 import { useI18n } from '../../locales/i18n';
-import { useFont } from '../../fonts/FontContext';
 
 export default function Navbar({
   currentBot,
@@ -34,18 +33,18 @@ export default function Navbar({
   onExportFlow,
   onImportFlow,
   onOpenPlugins,
+  onOpenBotSettings,
+  onToggleRunBot,
   updateInfo,
   theme,
   setTheme
 }) {
-  const { t, lang, setLang, dir } = useI18n();
-  const { currentFont, setFont, availableFonts } = useFont();
+  const { t, dir } = useI18n();
   const [isHovered, setIsHovered] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [botDropdownOpen, setBotDropdownOpen] = useState(false);
-  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
-  const [fontDropdownOpen, setFontDropdownOpen] = useState(false);
+  const [togglingRun, setTogglingRun] = useState(false);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -65,7 +64,18 @@ export default function Navbar({
     }
   };
 
+  const handleRunClick = async () => {
+    if (!currentBot || togglingRun) return;
+    setTogglingRun(true);
+    try {
+      await onToggleRunBot?.();
+    } finally {
+      setTogglingRun(false);
+    }
+  };
+
   const isVisible = isPinned || isHovered;
+  const isRunning = !!currentBot?.is_active;
 
   return (
     <>
@@ -84,7 +94,7 @@ export default function Navbar({
         } bg-surface/90 backdrop-blur-md border-b border-border shadow-xl px-4 py-2.5 flex items-center justify-between`}
       >
         {/* Left / Start Section */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={onBackToDashboard}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-default hover:bg-default/80 text-foreground text-xs font-medium transition-all"
@@ -131,6 +141,45 @@ export default function Navbar({
               </div>
             )}
           </div>
+
+          {/* Bot Settings Button */}
+          {currentBot && (
+            <button
+              onClick={onOpenBotSettings}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-secondary hover:bg-surface-tertiary border border-border text-foreground text-xs font-medium transition-all"
+              title={t('navbar.bot_settings') || 'Bot Settings'}
+            >
+              <SettingsIcon size={14} className="text-muted hover:text-foreground" />
+              <span className="hidden sm:inline">{t('navbar.bot_settings') || 'Settings'}</span>
+            </button>
+          )}
+
+          {/* Run / Stop Bot Button */}
+          {currentBot && (
+            <button
+              onClick={handleRunClick}
+              disabled={togglingRun}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-sm ${
+                isRunning 
+                  ? 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/25 ring-1 ring-emerald-500/20'
+                  : 'bg-accent text-accent-foreground hover:opacity-90'
+              }`}
+              title={isRunning ? (t('navbar.stop_bot') || 'Stop Bot') : (t('navbar.run_bot') || 'Run Bot')}
+            >
+              {isRunning ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <Pause size={13} className="fill-current" />
+                  <span>{t('navbar.running') || 'Running'}</span>
+                </>
+              ) : (
+                <>
+                  <Play size={13} className="fill-current" />
+                  <span>{t('navbar.run_bot') || 'Run Bot'}</span>
+                </>
+              )}
+            </button>
+          )}
 
           {/* Unsaved Changes Indicator */}
           {isDirty && (
@@ -195,75 +244,8 @@ export default function Navbar({
           </button>
         </div>
 
-        {/* Right / Customization Section */}
+        {/* Right / Quick Controls Section */}
         <div className="flex items-center gap-2">
-          {/* Language Switcher */}
-          <div className="relative">
-            <button
-              onClick={() => setLangDropdownOpen(!langDropdownOpen)}
-              className="p-1.5 rounded-lg bg-surface-secondary hover:bg-surface-tertiary border border-border text-foreground text-xs flex items-center gap-1"
-              title={t('navbar.language')}
-            >
-              <Globe size={14} />
-              <span className="uppercase text-[10px] font-bold">{lang}</span>
-            </button>
-
-            {langDropdownOpen && (
-              <div className="absolute end-0 top-full mt-1 w-32 bg-surface border border-border rounded-xl shadow-2xl p-1 z-50">
-                {[
-                  { code: 'fa', label: 'فارسی', flag: '🇮🇷' },
-                  { code: 'en', label: 'English', flag: '🇺🇸' },
-                  { code: 'ru', label: 'Русский', flag: '🇷🇺' },
-                  { code: 'ar', label: 'العربية', flag: '🇸🇦' }
-                ].map(l => (
-                  <button
-                    key={l.code}
-                    onClick={() => {
-                      setLang(l.code);
-                      setLangDropdownOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-start transition-colors ${
-                      lang === l.code ? 'bg-accent text-accent-foreground font-semibold' : 'text-foreground hover:bg-surface-secondary'
-                    }`}
-                  >
-                    <span>{l.flag}</span>
-                    <span>{l.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Font Switcher */}
-          <div className="relative">
-            <button
-              onClick={() => setFontDropdownOpen(!fontDropdownOpen)}
-              className="p-1.5 rounded-lg bg-surface-secondary hover:bg-surface-tertiary border border-border text-foreground text-xs"
-              title={t('navbar.font')}
-            >
-              <Type size={14} />
-            </button>
-
-            {fontDropdownOpen && (
-              <div className="absolute end-0 top-full mt-1 w-44 bg-surface border border-border rounded-xl shadow-2xl p-1 z-50">
-                {availableFonts.map(f => (
-                  <button
-                    key={f.id}
-                    onClick={() => {
-                      setFont(f.id);
-                      setFontDropdownOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-start transition-colors ${
-                      currentFont === f.id ? 'bg-accent text-accent-foreground font-semibold' : 'text-foreground hover:bg-surface-secondary'
-                    }`}
-                  >
-                    <span>{f.name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
           {/* Theme Toggle (HeroUI OKLCH) */}
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
