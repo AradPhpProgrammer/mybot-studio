@@ -79,13 +79,6 @@ export default function ConditionNode({ id, data, selected }) {
             className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-xs font-mono text-foreground outline-none focus:border-amber-500"
           />
         </div>
-
-        {/* Live Preview of Condition */}
-        <div className="px-2.5 py-1.5 rounded-lg bg-surface-tertiary/70 border border-border text-[11px] font-mono text-foreground text-center">
-          <span className="text-amber-400">{a || 'A'}</span>{' '}
-          <span className="font-bold text-amber-500">{op}</span>{' '}
-          <span className="text-amber-400">{b || 'B'}</span>
-        </div>
       </div>
 
       {/* Output Branches (TRUE / FALSE) */}

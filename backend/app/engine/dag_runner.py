@@ -8,6 +8,7 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import aiosqlite
+from app.database_bots import sync_subscriber_data, DEFAULT_TRACKED_FIELDS
 import httpx
 from app.config import settings
 from app.telegram.auto_chat_action import dispatch_auto_chat_action
@@ -159,46 +160,75 @@ class DAGRunner:
         self.db = db
 
     async def get_or_create_user(self, user_info: Dict[str, Any]) -> Dict[str, Any]:
-        telegram_id = user_info.get("id") or user_info.get("telegram_id", 0)
-        username = user_info.get("username", "")
-        first_name = user_info.get("first_name", "")
-        last_name = user_info.get("last_name", "")
-        lang = user_info.get("language_code", "fa")
+        telegram_id = int(user_info.get("id") or user_info.get("telegram_id") or 0)
+        # Pull tracked_fields preference from bot settings in main studio DB
+        tracked = DEFAULT_TRACKED_FIELDS
+        try:
+            cursor = await self.db.execute("SELECT settings FROM bots WHERE id = ?", (self.bot_id,))
+            b_row = await cursor.fetchone()
+            if b_row and b_row["settings"]:
+                try:
+                    s = json.loads(b_row["settings"])
+                    if "tracked_user_fields" in s and isinstance(s["tracked_user_fields"], list):
+                        tracked = s["tracked_user_fields"]
+                except Exception:
+                    pass
+        except Exception:
+            # No bots table in this connection (e.g. unit tests) -> use defaults
+            pass
 
-        cursor = await self.db.execute(
-            "SELECT id, data FROM bot_users WHERE bot_id = ? AND telegram_id = ?",
-            (self.bot_id, telegram_id)
-        )
-        row = await cursor.fetchone()
-        
-        if row:
-            user_data = json.loads(row["data"]) if row["data"] else {}
-        else:
-            user_data = {"balance": 0, "is_vip": False}
-            await self.db.execute(
-                """
-                INSERT INTO bot_users (bot_id, telegram_id, username, first_name, last_name, language_code, data)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                (self.bot_id, telegram_id, username, first_name, last_name, lang, json.dumps(user_data))
+        sub = await sync_subscriber_data(self.bot_id, user_info, tracked_fields=tracked)
+        data_blob = sub.get("data") if isinstance(sub.get("data"), dict) else {}
+
+        # Merge with legacy bot_users table if present (e.g. unit tests or pre-migration data)
+        try:
+            c_leg = await self.db.execute(
+                "SELECT data FROM bot_users WHERE bot_id = ? AND telegram_id = ?",
+                (self.bot_id, telegram_id)
             )
-            await self.db.commit()
+            r_leg = await c_leg.fetchone()
+            if r_leg and r_leg["data"]:
+                try:
+                    legacy_dict = json.loads(r_leg["data"])
+                    if isinstance(legacy_dict, dict):
+                        # Legacy update takes precedence if updated externally
+                        data_blob = {**data_blob, **legacy_dict}
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        if "balance" in sub and "balance" not in data_blob:
+            data_blob["balance"] = sub.get("balance", 0)
 
         return {
             "id": telegram_id,
             "telegram_id": telegram_id,
-            "username": username,
-            "first_name": first_name,
-            "last_name": last_name,
-            "data": user_data
+            "chat_id": sub.get("chat_id") or telegram_id,
+            "username": sub.get("username") or user_info.get("username", ""),
+            "first_name": sub.get("first_name") or user_info.get("first_name", ""),
+            "last_name": sub.get("last_name") or user_info.get("last_name", ""),
+            "data": data_blob,
+            "balance": sub.get("balance", 0),
+            "ref_code": sub.get("ref_code") or user_info.get("ref_code", "")
         }
 
     async def save_user_data(self, telegram_id: int, user_data: Dict[str, Any]):
-        await self.db.execute(
-            "UPDATE bot_users SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE bot_id = ? AND telegram_id = ?",
-            (json.dumps(user_data), self.bot_id, telegram_id)
-        )
-        await self.db.commit()
+        # 1. Save to bot's dedicated SQLite runtime database (bot_{id}.db)
+        try:
+            await sync_subscriber_data(self.bot_id, {"id": telegram_id}, extra_vars=user_data)
+        except Exception as e:
+            logger.warning(f"Could not sync subscriber data to bot_{self.bot_id}.db: {e}")
+
+        # 2. Also keep legacy bot_users in sync if present in main db connection
+        try:
+            await self.db.execute(
+                "UPDATE bot_users SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE bot_id = ? AND telegram_id = ?",
+                (json.dumps(user_data), self.bot_id, telegram_id)
+            )
+            await self.db.commit()
+        except Exception:
+            pass
 
     async def find_entry_nodes(
         self, nodes: List[Dict[str, Any]], event_type: str, payload: str, context: Dict[str, Any]

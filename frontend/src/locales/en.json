@@ -138,8 +138,12 @@
       "desc": "Fires on slash commands (e.g. /help) and auto-syncs with Telegram menu."
     },
     "trigger_callback": {
-      "name": "Button Click (Callback)",
+      "name": "Inline Button Event",
       "desc": "Fires when user clicks an inline keyboard button."
+    },
+    "trigger_keyboard": {
+      "name": "Reply Keyboard Event",
+      "desc": "Fires when user taps a persistent reply keyboard button."
     },
     "trigger_message": {
       "name": "Message Received",
@@ -160,7 +164,8 @@
     },
     "action_answer_callback": {
       "name": "Answer Callback (Alert)",
-      "desc": "Dismisses Telegram spinner and displays alert."
+      "desc": "Dismisses Telegram spinner and displays alert.",
+      "show_alert_label": "Show as popup alert"
     },
     "action_condition": {
       "name": "Branch (If / Else)",
@@ -305,6 +310,10 @@
     "miniapp_url": "Mini App Web URL",
     "auto_typing": "Auto Chat Action (Typing Indicator)",
     "auto_typing_desc": "Display typing / uploading status before sending",
+    "sync_commands": "Auto-Sync Slash Commands",
+    "sync_commands_desc": "Automatically register flow slash commands (/start, /help) to Telegram menu via setMyCommands",
+    "flow_transfer": "Template Builder (Export / Import)",
+        "flow_transfer_desc": "Build a reusable flow template and export it to JSON, or import an existing template.",
     "cf_worker": "Cloudflare Worker Reverse Proxy URL",
         "custom_proxy": "HTTP / SOCKS5 Proxy"
       },

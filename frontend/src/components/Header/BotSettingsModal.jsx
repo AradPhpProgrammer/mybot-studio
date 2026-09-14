@@ -1,22 +1,62 @@
-import React, { useState, useEffect } from 'react';
-import { X, Bot, Save, Globe, Terminal, Sparkles, Check, AlertCircle } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  Bot,
+  X,
+  Loader2,
+  Check,
+  AlertCircle,
+  Upload,
+  Download,
+  Database,
+  ChevronDown,
+  ChevronUp,
+  Sliders
+} from 'lucide-react';
 import { useI18n } from '../../locales/i18n';
 import { api } from '../../services/api';
 
-export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated }) {
-  const { t } = useI18n();
+const CANDIDATE_FIELDS = [
+  { key: 'telegram_id', label_en: 'Numeric Telegram ID', label_fa: 'شناسه عددی تلگرام', default: true, required: true },
+  { key: 'chat_id', label_en: 'Chat ID', label_fa: 'شناسه چت', default: true, required: true },
+  { key: 'first_name', label_en: 'First Name', label_fa: 'نام کوچک', default: true, required: false },
+  { key: 'start_date', label_en: 'First Start Date', label_fa: 'تاریخ اولین استارت', default: true, required: false },
+  { key: 'username', label_en: 'Telegram @Username', label_fa: 'نام کاربری (@username)', default: false, required: false },
+  { key: 'last_name', label_en: 'Last Name', label_fa: 'نام خانوادگی', default: false, required: false },
+  { key: 'language_code', label_en: 'Language Code', label_fa: 'کد زبان تلگرام', default: false, required: false },
+  { key: 'balance', label: 'User Balance / Credits', label_fa: 'موجودی حساب کاربر', default: false, required: false },
+  { key: 'ref_code', label: 'Referral / Deep-Link Code', label_fa: 'کد معرف / لینک ورودی', default: false, required: false },
+  { key: 'inviter_id', label: 'Inviter Telegram ID', label_fa: 'شناسه معرف', default: false, required: false },
+  { key: 'last_seen', label: 'Last Activity Date', label_fa: 'تاریخ آخرین فعالیت', default: false, required: false },
+  { key: 'total_starts', label: 'Total Starts Count', label_fa: 'شمارنده تعداد استارت', default: false, required: false },
+  { key: 'custom_variables', label: 'Flow Set-Variables (NoSQL)', label_fa: 'متغیرهای سفارشی فلو', default: false, required: false },
+];
+
+export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, onExportFlow, onImportFlow }) {
+  const { t, lang } = useI18n();
 
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
   const [description, setDescription] = useState('');
-  const [isMiniAppEnabled, setIsMiniAppEnabled] = useState(false);
-  const [miniAppUrl, setMiniAppUrl] = useState('');
+  const [isMiniapp, setIsMiniapp] = useState(false);
+  const [miniappUrl, setMiniappUrl] = useState('');
   const [autoChatAction, setAutoChatAction] = useState(true);
+  const [syncCommands, setSyncCommands] = useState(false);
   const [customProxy, setCustomProxy] = useState('');
   const [cfWorkerUrl, setCfWorkerUrl] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  // Database tracking settings
+  const [dbMenuOpen, setDbMenuOpen] = useState(false);
+  const [trackedFields, setTrackedFields] = useState(['telegram_id', 'chat_id', 'first_name', 'start_date']);
+  const [dbFileName, setDbFileName] = useState('');
+  const [subscribersCount, setSubscribersCount] = useState(0);
+
   const [saving, setSaving] = useState(false);
-  const [savedSuccess, setSavedSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [savedSuccess, setSavedSuccess] = useState(false);
+  const fileInputRef = useRef(null);
+  const exportInputRef = useRef(null);
 
   useEffect(() => {
     if (bot) {
@@ -24,39 +64,88 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated })
       const s = bot.settings || {};
       setBio(s.bio || '');
       setDescription(s.description || '');
-      setIsMiniAppEnabled(!!s.is_miniapp_enabled);
-      setMiniAppUrl(s.miniapp_url || '');
-      setAutoChatAction(s.auto_chat_action !== false);
+      setIsMiniapp(Boolean(s.is_miniapp_enabled));
+      setMiniappUrl(s.miniapp_url || '');
+      setAutoChatAction(s.auto_chat_action ?? true);
+      setSyncCommands(s.sync_commands_automatically ?? false);
       setCustomProxy(s.custom_proxy || '');
       setCfWorkerUrl(s.cf_worker_url || '');
-      setSavedSuccess(false);
-      setErrorMsg('');
+      setPhotoUrl(s.photo_url || bot.photo_url || '');
+
+      const currentTracked = Array.isArray(s.tracked_user_fields) && s.tracked_user_fields.length > 0
+        ? s.tracked_user_fields
+        : ['telegram_id', 'chat_id', 'first_name', 'start_date'];
+      setTrackedFields(currentTracked);
+
+      // Fetch per-bot DB info
+      api.getBotDbSchema?.(bot.id)
+        .then((info) => {
+          if (info) {
+            if (info.database_file) setDbFileName(info.database_file);
+            if (typeof info.subscribers_count === 'number') setSubscribersCount(info.subscribers_count);
+            if (Array.isArray(info.tracked_fields)) setTrackedFields(info.tracked_fields);
+          }
+        })
+        .catch(() => {});
     }
+    setErrorMsg('');
+    setSavedSuccess(false);
   }, [bot, isOpen]);
 
   if (!isOpen || !bot) return null;
 
-  const handleSave = async () => {
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPhoto(true);
+    setErrorMsg('');
+    try {
+      const res = await api.uploadBotAvatar(bot.id, file);
+      setPhotoUrl(res.photo_url);
+      const updated = {
+        ...bot,
+        photo_url: res.photo_url,
+        settings: { ...bot.settings, photo_url: res.photo_url }
+      };
+      onBotUpdated?.(updated);
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to upload photo');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const toggleField = (key, required) => {
+    if (required) return;
+    setTrackedFields((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
     setSaving(true);
     setErrorMsg('');
-    setSavedSuccess(false);
     try {
       const payload = {
         name: name.trim() || bot.name,
         bio: bio.trim(),
         description: description.trim(),
-        is_miniapp_enabled: isMiniAppEnabled,
-        miniapp_url: miniAppUrl.trim(),
+        is_miniapp_enabled: isMiniapp,
+        miniapp_url: miniappUrl.trim(),
         auto_chat_action: autoChatAction,
+        sync_commands_automatically: syncCommands,
         custom_proxy: customProxy.trim(),
-        cf_worker_url: cfWorkerUrl.trim()
+        cf_worker_url: cfWorkerUrl.trim(),
+        tracked_user_fields: trackedFields
       };
 
       const res = await api.updateBotSettings(bot.id, payload);
       const updatedBot = {
         ...bot,
         name: res.name || payload.name,
-        settings: res.settings || { ...bot.settings, ...payload }
+        photo_url: photoUrl,
+        settings: res.settings || { ...bot.settings, ...payload, photo_url: photoUrl }
       };
 
       onBotUpdated?.(updatedBot);
@@ -64,7 +153,7 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated })
       setTimeout(() => {
         setSavedSuccess(false);
         onClose();
-      }, 700);
+      }, 600);
     } catch (err) {
       setErrorMsg(err.message || 'Failed to update bot settings');
     } finally {
@@ -73,19 +162,17 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated })
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg bg-surface border border-border rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-border flex items-center justify-between bg-surface-secondary/50">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+      <div className="w-full max-w-lg bg-surface border border-border rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-150">
+        {/* Modal Header */}
+        <div className="px-5 py-3.5 border-b border-border flex items-center justify-between bg-surface-secondary/50">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-accent/15 border border-accent/30 flex items-center justify-center text-accent">
-              <Bot size={18} />
-            </div>
+            <Sliders size={16} className="text-accent" />
             <div>
               <h2 className="text-sm font-bold text-foreground">
                 {t('bot_settings.title') || 'Bot Settings'}
               </h2>
-              <p className="text-[11px] text-muted">@{bot.username}</p>
+              <p className="text-[11px] text-muted font-mono">@{bot.username}</p>
             </div>
           </div>
           <button
@@ -96,17 +183,63 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated })
           </button>
         </div>
 
-        {/* Form Body */}
-        <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+        {/* Modal Body */}
+        <form onSubmit={handleSave} className="p-5 space-y-4 overflow-y-auto flex-1 text-foreground">
           {errorMsg && (
             <div className="p-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-xs flex items-center gap-2">
-              <AlertCircle size={15} />
+              <AlertCircle size={15} className="shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}
 
+          {/* Telegram / Instagram Style Profile Photo Circle */}
+          <div className="flex items-center gap-4 p-3 rounded-2xl bg-surface-secondary/40 border border-border">
+            <div className="relative w-16 h-16 shrink-0">
+              {photoUrl ? (
+                <img
+                  src={photoUrl}
+                  alt={name}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-16 h-16 rounded-full object-cover border-2 border-border shadow-md cursor-pointer hover:opacity-80 transition-opacity"
+                  title="Click to change photo"
+                />
+              ) : (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-16 h-16 rounded-full border-2 border-dashed border-border bg-surface-secondary flex items-center justify-center text-muted hover:border-accent hover:text-accent transition-colors cursor-pointer"
+                  title="Upload profile photo"
+                >
+                  {uploadingPhoto ? (
+                    <Loader2 size={20} className="animate-spin text-accent" />
+                  ) : (
+                    <div className="w-6 h-6 border-2 border-current rounded flex items-center justify-center">
+                      <Upload size={13} />
+                    </div>
+                  )}
+                </div>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarUpload}
+              />
+            </div>
+            <div className="space-y-1">
+              <div className="text-xs font-bold text-foreground">
+                {photoUrl ? (lang === 'fa' ? 'تصویر پروفایل ربات' : 'Bot Profile Photo') : (lang === 'fa' ? 'آپلود تصویر پروفایل' : 'Upload Profile Photo')}
+              </div>
+              <p className="text-[11px] text-muted leading-relaxed">
+                {lang === 'fa'
+                  ? 'برای تغییر یا ثبت لوگوی ربات روی دایره کلیک کنید.'
+                  : 'Click the circle to upload a custom avatar for this bot.'}
+              </p>
+            </div>
+          </div>
+
           {/* Bot Name */}
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <label className="text-xs font-medium text-foreground">
               {t('bot_settings.name_label') || 'Bot Display Name'}
             </label>
@@ -114,138 +247,233 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated })
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="My Awesome Bot"
-              className="w-full px-3 py-2 rounded-xl bg-surface-secondary border border-border text-xs text-foreground outline-none focus:border-accent"
+              placeholder="My Telegram Bot"
+              className="w-full px-3 py-2 rounded-xl bg-surface-secondary border border-border text-xs text-foreground outline-none focus:border-accent font-sans"
             />
           </div>
 
-          {/* Bio / Short description */}
-          <div className="space-y-1.5">
+          {/* Bot Bio */}
+          <div className="space-y-1">
             <label className="text-xs font-medium text-foreground">
-              {t('bot_settings.bio_label') || 'Bot Bio / Description'}
+              {t('bot_settings.bio_label') || 'Bot Bio'}
+            </label>
+            <input
+              type="text"
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="Short bio (appears in bot profile info)"
+              className="w-full px-3 py-2 rounded-xl bg-surface-secondary border border-border text-xs text-foreground outline-none focus:border-accent font-sans"
+            />
+          </div>
+
+          {/* Bot Description */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-foreground">
+              {lang === 'fa' ? 'توضیحات قبل از استارت ربات' : 'What can this bot do? (Description)'}
             </label>
             <textarea
               rows={2}
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="Short bio shown in Telegram profile..."
-              className="w-full px-3 py-2 rounded-xl bg-surface-secondary border border-border text-xs text-foreground outline-none focus:border-accent resize-none"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Shown on the empty chat screen before user presses /start"
+              className="w-full px-3 py-2 rounded-xl bg-surface-secondary border border-border text-xs text-foreground outline-none focus:border-accent resize-none font-sans"
             />
           </div>
 
-          {/* MiniApp Settings */}
-          <div className="p-3.5 rounded-xl border border-border bg-surface-secondary/40 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                  <Sparkles size={14} className="text-accent" />
-                  <span>{t('bot_settings.miniapp_toggle') || 'Telegram Mini App (Web App)'}</span>
-                </div>
-                <div className="text-[11px] text-muted">
-                  {t('bot_settings.miniapp_desc') || 'Enable interactive WebApp button in menu'}
+          {/* Per-Bot Isolated Database & Field Tracking Collapsible */}
+          <div className="rounded-2xl border border-border overflow-hidden bg-surface-secondary/30">
+            <button
+              type="button"
+              onClick={() => setDbMenuOpen(!dbMenuOpen)}
+              className="w-full px-4 py-3 flex items-center justify-between text-start hover:bg-surface-secondary/60 transition-colors"
+            >
+              <div className="flex items-center gap-2.5">
+                <Database size={15} className="text-accent" />
+                <div>
+                  <div className="text-xs font-bold text-foreground">
+                    {lang === 'fa' ? 'تنظیمات دیتابیس اختصاصی و فیلدها' : 'Isolated Database & Tracked Fields'}
+                  </div>
+                  <div className="text-[10px] text-muted font-mono">
+                    {dbFileName || `bot_${bot.id}.db`} • {subscribersCount} {lang === 'fa' ? 'مشترک' : 'subscriber(s)'}
+                  </div>
                 </div>
               </div>
-              <input
-                type="checkbox"
-                checked={isMiniAppEnabled}
-                onChange={(e) => setIsMiniAppEnabled(e.target.checked)}
-                className="w-4 h-4 accent-accent cursor-pointer"
-              />
-            </div>
+              {dbMenuOpen ? <ChevronUp size={16} className="text-muted" /> : <ChevronDown size={16} className="text-muted" />}
+            </button>
 
-            {isMiniAppEnabled && (
-              <div className="pt-2 border-t border-border/60">
-                <label className="text-[11px] font-medium text-muted block mb-1">
-                  {t('bot_settings.miniapp_url') || 'Mini App Web URL'}
-                </label>
-                <input
-                  type="url"
-                  value={miniAppUrl}
-                  onChange={(e) => setMiniAppUrl(e.target.value)}
-                  placeholder="https://yourapp.example.com"
-                  className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-xs text-foreground outline-none focus:border-accent font-mono"
-                />
+            {dbMenuOpen && (
+              <div className="p-3.5 border-t border-border bg-surface space-y-2.5">
+                <p className="text-[11px] text-muted leading-relaxed">
+                  {lang === 'fa'
+                    ? 'هر ربات دیتابیس لوکال مجزای خودش را دارد. فقط فیلدهایی که تیک خورده باشند ذخیره می‌شوند تا دیتابیس شلوغ و سنگین نشود.'
+                    : 'Each bot has its own SQLite file. Only checked fields are saved to keep the database fast and clean.'}
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  {CANDIDATE_FIELDS.map((f) => {
+                    const isChecked = trackedFields.includes(f.key);
+                    return (
+                      <label
+                        key={f.key}
+                        className={`flex items-center gap-2 p-2 rounded-xl border text-xs cursor-pointer select-none transition-colors ${
+                          isChecked
+                            ? 'bg-accent/10 border-accent/40 text-foreground font-medium'
+                            : 'bg-surface-secondary/50 border-border text-muted hover:text-foreground'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          disabled={f.required}
+                          onChange={() => toggleField(f.key, f.required)}
+                          className="rounded border-border accent-accent w-3.5 h-3.5"
+                        />
+                        <span className="flex-1 truncate">
+                          {lang === 'fa' ? f.label_fa : f.label_en}
+                          {f.required && (
+                            <span className="text-[9px] text-accent ms-1 font-semibold">
+                              ({lang === 'fa' ? 'الزامی' : 'required'})
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
 
-          {/* Auto Chat Action */}
-          <div className="p-3 rounded-xl border border-border bg-surface-secondary/40 flex items-center justify-between">
+          {/* Mini App Toggle */}
+          <div className="p-3 rounded-2xl bg-surface-secondary/40 border border-border space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs font-bold text-foreground">
+                  {t('bot_settings.miniapp_toggle') || 'Telegram Mini App'}
+                </div>
+                <p className="text-[11px] text-muted leading-relaxed">
+                  {t('bot_settings.miniapp_desc') || 'Enable interactive WebApp button in menu'}
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                checked={isMiniapp}
+                onChange={(e) => setIsMiniapp(e.target.checked)}
+                className="w-4 h-4 accent-accent rounded cursor-pointer"
+              />
+            </div>
+            {isMiniapp && (
+              <input
+                type="url"
+                value={miniappUrl}
+                onChange={(e) => setMiniappUrl(e.target.value)}
+                placeholder="https://your-domain.com/webapp"
+                className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs text-foreground outline-none focus:border-accent font-mono"
+              />
+            )}
+          </div>
+
+          {/* Auto Chat Action Toggle */}
+          <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-secondary/40 border border-border">
             <div>
-              <div className="text-xs font-medium text-foreground">
-                {t('bot_settings.auto_typing') || 'Auto Chat Action (Typing Indicator)'}
+              <div className="text-xs font-bold text-foreground">
+                {t('bot_settings.auto_typing') || 'Auto Chat Action'}
               </div>
-              <div className="text-[11px] text-muted">
-                {t('bot_settings.auto_typing_desc') || 'Displays typing / uploading status before sending'}
-              </div>
+              <p className="text-[11px] text-muted">
+                {t('bot_settings.auto_typing_desc') || 'Show typing / sending photo before answering'}
+              </p>
             </div>
             <input
               type="checkbox"
               checked={autoChatAction}
               onChange={(e) => setAutoChatAction(e.target.checked)}
-              className="w-4 h-4 accent-accent cursor-pointer"
+              className="w-4 h-4 accent-accent rounded cursor-pointer"
             />
           </div>
 
-          {/* Custom Proxy & CF Worker */}
-          <div className="space-y-3 pt-1">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-foreground">
-                {t('bot_settings.cf_worker') || 'Cloudflare Worker Reverse Proxy URL'}
-              </label>
-              <input
-                type="url"
-                value={cfWorkerUrl}
-                onChange={(e) => setCfWorkerUrl(e.target.value)}
-                placeholder="https://telegram-proxy.example.workers.dev"
-                className="w-full px-3 py-1.5 rounded-lg bg-surface-secondary border border-border text-xs text-foreground font-mono outline-none focus:border-accent"
-              />
+          {/* Sync Commands with BotFather Toggle (default OFF) */}
+          <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-secondary/40 border border-border">
+            <div>
+              <div className="text-xs font-bold text-foreground">
+                {t('bot_settings.sync_commands') || 'Auto-Sync Slash Commands'}
+              </div>
+              <p className="text-[11px] text-muted">
+                {t('bot_settings.sync_commands_desc') || 'Automatically register flow slash commands (/start, /help) to Telegram menu via setMyCommands'}
+              </p>
             </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-foreground">
-                {t('bot_settings.custom_proxy') || 'HTTP / SOCKS5 Proxy'}
-              </label>
-              <input
-                type="text"
-                value={customProxy}
-                onChange={(e) => setCustomProxy(e.target.value)}
-                placeholder="http://127.0.0.1:10809"
-                className="w-full px-3 py-1.5 rounded-lg bg-surface-secondary border border-border text-xs text-foreground font-mono outline-none focus:border-accent"
-              />
-            </div>
+            <input
+              type="checkbox"
+              checked={syncCommands}
+              onChange={(e) => setSyncCommands(e.target.checked)}
+              className="w-4 h-4 accent-accent rounded cursor-pointer"
+            />
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="px-5 py-3.5 border-t border-border bg-surface-secondary/50 flex items-center justify-end gap-2.5">
-          <button
-            onClick={onClose}
-            disabled={saving}
-            className="px-3 py-1.5 rounded-xl border border-border text-xs font-medium text-foreground hover:bg-surface transition-colors"
-          >
-            {t('common.cancel') || 'Cancel'}
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-accent text-accent-foreground text-xs font-semibold hover:opacity-90 transition-all shadow-md disabled:opacity-50"
-          >
-            {savedSuccess ? (
-              <>
-                <Check size={14} />
-                <span>{t('common.saved') || 'Saved!'}</span>
-              </>
-            ) : saving ? (
-              <span>{t('common.saving') || 'Saving...'}</span>
-            ) : (
-              <>
-                <Save size={14} />
-                <span>{t('common.save') || 'Save Changes'}</span>
-              </>
-            )}
-          </button>
-        </div>
+          {/* Export / Import Flow */}
+          <div className="p-3 rounded-2xl bg-surface-secondary/40 border border-border space-y-2">
+            <div className="text-xs font-bold text-foreground">
+                          {t('bot_settings.flow_transfer') || 'Template Builder (Export / Import)'}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={onExportFlow}
+                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-surface-secondary hover:bg-surface-tertiary border border-border text-foreground text-xs font-medium transition-all"
+                          >
+                            <Download size={14} />
+                            {t('navbar.export_json') || 'Export JSON'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => exportInputRef.current?.click()}
+                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-surface-secondary hover:bg-surface-tertiary border border-border text-foreground text-xs font-medium transition-all"
+                          >
+                            <Upload size={14} />
+                            {t('navbar.import_json') || 'Import JSON'}
+                          </button>
+                          <input
+                            ref={exportInputRef}
+                            type="file"
+                            accept=".json,application/json"
+                            className="hidden"
+                            onChange={onImportFlow}
+                          />
+                        </div>
+                        <p className="text-[10px] text-muted">
+                          {t('bot_settings.flow_transfer_desc') || 'Build a reusable flow template and export it to JSON, or import an existing template.'}
+                        </p>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl text-xs text-muted hover:text-foreground font-medium"
+            >
+              {t('common.cancel') || 'Cancel'}
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-accent text-accent-foreground text-xs font-semibold shadow-md disabled:opacity-50 transition-all hover:opacity-90"
+            >
+              {saving ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>{t('common.saving') || 'Saving...'}</span>
+                </>
+              ) : savedSuccess ? (
+                <>
+                  <Check size={14} />
+                  <span>{t('common.saved') || 'Saved!'}</span>
+                </>
+              ) : (
+                <span>{t('common.save') || 'Save Settings'}</span>
+              )}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

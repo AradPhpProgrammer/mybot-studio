@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Bot, 
-  Save, 
-  Play, 
-  Pause,
-  Download, 
-  Upload, 
-  Maximize2, 
-  Minimize2, 
-  Sun, 
-  Moon, 
-  Puzzle, 
-  ChevronDown, 
+  Bot,
+    Save,
+    Play,
+    Pause,
+    Maximize2,
+    Minimize2,
+    Sun,
+    Moon,
+    Puzzle,
+    ChevronDown,
   Pin, 
   PinOff,
   Sparkles,
@@ -218,21 +216,6 @@ export default function Navbar({
               </>
             )}
           </button>
-
-          <button
-            onClick={onExportFlow}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-secondary hover:bg-surface-tertiary border border-border text-foreground text-xs font-medium transition-all"
-            title={t('navbar.export_json')}
-          >
-            <Download size={14} />
-            <span className="hidden md:inline">{t('navbar.export_json')}</span>
-          </button>
-
-          <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-secondary hover:bg-surface-tertiary border border-border text-foreground text-xs font-medium cursor-pointer transition-all">
-            <Upload size={14} />
-            <span className="hidden md:inline">{t('navbar.import_json')}</span>
-            <input type="file" accept=".json" onChange={onImportFlow} className="hidden" />
-          </label>
 
           <button
             onClick={onOpenPlugins}

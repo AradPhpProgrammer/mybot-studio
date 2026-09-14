@@ -139,6 +139,9 @@ body {
 }
 
 /* Force labels/text to inherit theme foreground so nothing stays light in dark mode */
+[data-theme="dark"] .react-flow__node {
+  color: var(--foreground);
+}
 .react-flow__node div,
 .react-flow__node span,
 .react-flow__node input,
@@ -148,8 +151,154 @@ body {
 }
 
 /* Canvas Themes */
-.dark-canvas .react-flow__background { background-color: #0b1120; }
-.light-canvas .react-flow__background { background-color: #f1f5f9; }
+.dark-canvas .react-flow__background,
+.react-flow__renderer .react-flow__background,
+.react-flow.dark-canvas {
+  background-color: #0b1120;
+  color-scheme: dark;
+}
+.light-canvas .react-flow__background {
+  background-color: #f1f5f9;
+  color-scheme: light;
+}
+
+/* Dark-mode React Flow internals (minimap, attribution, edges pane) */
+.dark-canvas .react-flow__minimap {
+  background-color: #151b2d;
+  border: 1px solid #2a3450;
+  border-radius: 12px;
+}
+.dark-canvas .react-flow__minimap .react-flow__minimap-mask {
+  fill: rgba(10, 15, 24, 0.85);
+  stroke: #3b82f6;
+}
+.dark-canvas .react-flow__minimap .react-flow__minimap-node,
+.react-flow__minimap-node {
+  fill: #475569;
+  stroke: #64748b;
+}
+.dark-canvas .react-flow__controls {
+  background-color: #111827;
+  border: 1px solid #2a3450;
+}
+.dark-canvas .react-flow__controls-button {
+  background-color: #111827;
+  color: #e5e7eb;
+  border-bottom: 1px solid #2a3450;
+}
+.dark-canvas .react-flow__controls-button:hover {
+  background-color: #1f2b45;
+}
+.dark-canvas .react-flow__attribution {
+  background: transparent;
+}
+
+/* ============================================================
+   STRICT CANVAS DARK MODE & CURSOR OVERHAUL
+   ============================================================ */
+
+/* Fix mouse cursor: default arrow over canvas pane, grab only on node headers */
+.react-flow__pane {
+  cursor: default !important;
+}
+.react-flow__pane.dragging {
+  cursor: grabbing !important;
+}
+.custom-drag-handle {
+  cursor: grab !important;
+}
+.custom-drag-handle:active {
+  cursor: grabbing !important;
+}
+
+/* Dark mode node styling */
+[data-theme="dark"] .react-flow__node > div,
+.dark .react-flow__node > div {
+  background-color: #0d1322 !important;
+  border-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+/* Node header bar (where title is and where user drags) -> Deep Black with crisp white text */
+[data-theme="dark"] .custom-drag-handle,
+.dark .custom-drag-handle {
+  background-color: #060913 !important;
+  border-bottom: 1px solid #1e293b !important;
+  color: #ffffff !important;
+}
+[data-theme="dark"] .custom-drag-handle * {
+  color: #ffffff !important;
+}
+[data-theme="dark"] .custom-drag-handle .text-muted,
+.dark .custom-drag-handle .text-muted {
+  color: #94a3b8 !important;
+}
+
+/* Soft gray inputs / textareas / selects inside nodes */
+[data-theme="dark"] .react-flow__node input,
+[data-theme="dark"] .react-flow__node textarea,
+[data-theme="dark"] .react-flow__node select,
+.dark .react-flow__node input,
+.dark .react-flow__node textarea,
+.dark .react-flow__node select {
+  background-color: #1e293b !important;
+  color: #f1f5f9 !important;
+  border: 1px solid #334155 !important;
+}
+[data-theme="dark"] .react-flow__node input:focus,
+[data-theme="dark"] .react-flow__node textarea:focus,
+[data-theme="dark"] .react-flow__node select:focus,
+.dark .react-flow__node input:focus,
+.dark .react-flow__node textarea:focus,
+.dark .react-flow__node select:focus {
+  border-color: #3b82f6 !important;
+  outline: none !important;
+}
+[data-theme="dark"] .react-flow__node input::placeholder,
+[data-theme="dark"] .react-flow__node textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* Bottom-left controls menu in dark mode */
+[data-theme="dark"] .react-flow__controls,
+.dark .react-flow__controls {
+  background-color: #0d1322 !important;
+  border: 1px solid #1e293b !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+}
+[data-theme="dark"] .react-flow__controls-button,
+.dark .react-flow__controls-button {
+  background-color: #0d1322 !important;
+  color: #cbd5e1 !important;
+  border-bottom: 1px solid #1e293b !important;
+  fill: #cbd5e1 !important;
+}
+[data-theme="dark"] .react-flow__controls-button:hover,
+.dark .react-flow__controls-button:hover {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+}
+[data-theme="dark"] .react-flow__controls-button svg,
+.dark .react-flow__controls-button svg {
+  fill: currentColor !important;
+}
+
+/* MiniMap top-left in dark mode */
+[data-theme="dark"] .react-flow__minimap,
+.dark .react-flow__minimap {
+  background-color: #0a0f1d !important;
+  border: 1px solid #1e293b !important;
+}
+[data-theme="dark"] .react-flow__minimap-mask,
+.dark .react-flow__minimap-mask {
+  fill: rgba(6, 9, 19, 0.8) !important;
+}
+[data-theme="dark"] .react-flow__minimap-node,
+.dark .react-flow__minimap-node {
+  fill: #334155 !important;
+  stroke: #475569 !important;
+}
+
 
 /* ============================================================
    THEME-OPACITY NORMALIZATION

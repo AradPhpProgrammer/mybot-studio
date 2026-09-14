@@ -21,8 +21,12 @@ export default function MessageNode({ id, data, selected }) {
       <Handle type="target" position={Position.Left} id="exec" className="!w-3 !h-3 !bg-blue-500 !border-2 !border-surface cursor-crosshair" />
 
       <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border bg-surface-secondary/50 rounded-t-xl cursor-grab active:cursor-grabbing custom-drag-handle">
-        <div className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-500">
-          <Icon size={15} />
+        <div className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-500 overflow-hidden">
+          {data.custom_icon_url ? (
+            <img src={data.custom_icon_url} alt="icon" className="w-full h-full object-cover" />
+          ) : (
+            <Icon size={15} />
+          )}
         </div>
         <div className="flex-1">
           <div className="text-[10px] uppercase font-bold tracking-wider text-blue-500">Message / Media</div>
@@ -52,7 +56,7 @@ export default function MessageNode({ id, data, selected }) {
 
         {/* Buttons preview */}
         {buttons.length > 0 && (
-          <div className="space-y-1 pt-1 border-t border-border nodrag nopan">
+          <div className="space-y-1 pt-1.5 mt-0.5 border-t border-[#1e293b] dark:border-[#2b3750] nodrag nopan">
             {buttons.map((row, rIdx) => (
               <div key={rIdx} className="flex gap-1">
                 {row.map((btn, bIdx) => {

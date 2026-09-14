@@ -29,6 +29,7 @@ class BotSettingsUpdate(BaseModel):
     cf_worker_url: Optional[str] = None
     default_language: Optional[str] = None
     sync_commands_automatically: Optional[bool] = None
+    tracked_user_fields: Optional[List[str]] = None
     is_active: Optional[bool] = None
 
 class BotResponse(BaseModel):

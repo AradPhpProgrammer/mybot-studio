@@ -302,12 +302,18 @@ export default function App() {
     setIsDirty(true);
   };
 
-  // Keyboard Shortcuts (Ctrl+S for save, Space for quick search)
+  // Keyboard Shortcuts (Ctrl+S for save, Ctrl+N & Space for quick search / add node)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         handleSaveFlow();
+      } else if (e.ctrlKey && e.shiftKey && (e.key === 'n' || e.key === 'N')) {
+        if (view === 'studio') {
+          e.preventDefault();
+          setQuickSearchPos({ x: window.innerWidth / 2 - 100, y: window.innerHeight / 2 - 100 });
+          setQuickSearchOpen(true);
+        }
       } else if (
         e.code === 'Space' && 
         view === 'studio' && 
@@ -324,8 +330,11 @@ export default function App() {
   }, [view, nodes, edges, currentBot]);
 
   const handlePaneContextMenu = (e) => {
-    e.preventDefault();
-    setQuickSearchPos({ x: e.clientX, y: e.clientY });
+    // e may be either a native event or a plain {x,y} point from Canvas
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    const x = typeof e === 'object' && 'clientX' in e ? e.clientX : (e?.x ?? window.innerWidth / 2);
+    const y = typeof e === 'object' && 'clientY' in e ? e.clientY : (e?.y ?? window.innerHeight / 2);
+    setQuickSearchPos({ x, y });
     setQuickSearchOpen(true);
   };
 
@@ -439,6 +448,7 @@ export default function App() {
             currentBot={currentBot}
             selectedNode={selectedNode}
             onUpdateNodeData={handleUpdateNodeData}
+            nodes={nodes}
           />
 
           {/* Quick Search Palette */}
@@ -462,6 +472,8 @@ export default function App() {
             onClose={() => setBotSettingsOpen(false)}
             bot={currentBot}
             onBotUpdated={handleUpdateBot}
+            onExportFlow={handleExportFlow}
+            onImportFlow={handleImportFlow}
           />
         </div>
       )}

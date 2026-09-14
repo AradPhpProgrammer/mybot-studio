@@ -52,6 +52,13 @@ def test_formatting_keyboard_styles():
     print("✅ test_formatting_keyboard_styles passed")
 
 async def test_dag_runner_starter_flow():
+    from app.database_bots import get_bot_db_path
+    for b_id in (1, 2):
+        p = get_bot_db_path(b_id)
+        if p.exists():
+            try: p.unlink()
+            except Exception: pass
+
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
         db_path = tmp.name
 
@@ -115,6 +122,7 @@ async def test_dag_runner_starter_flow():
             user_info=user_info
         )
         assert res_cb["success"] is True
+        print("DEBUG user_state:", res_cb.get("user_state"))
         assert res_cb["user_state"]["balance"] == 50
         assert len(res_cb["alerts"]) == 1
         assert "50" in res_cb["alerts"][0]["text"]
@@ -127,6 +135,11 @@ async def test_dag_runner_starter_flow():
 
 async def test_condition_and_math_operators():
     """Tests the new condition (input_a/op/input_b) and math operator formats."""
+    from app.database_bots import get_bot_db_path
+    p = get_bot_db_path(2)
+    if p.exists():
+        try: p.unlink()
+        except Exception: pass
     import tempfile
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
         db_path = tmp.name
@@ -160,14 +173,15 @@ async def test_condition_and_math_operators():
         print("✅ condition + math operator test passed (false branch, mul=20)")
 
     # High score -> true branch (fresh connection)
-    async with aiosqlite.connect(db_path) as db:
-        db.row_factory = aiosqlite.Row
-        await db.execute("UPDATE bot_users SET data=? WHERE bot_id=2 AND telegram_id=99", (json.dumps({"score":50}),))
-        await db.commit()
-        r2 = DAGRunner(bot_id=2, db=db)
-        res2 = await r2.execute_flow("callback","check",ui)
-        assert res2["user_state"]["passed"] == "yes", f"expected 'yes' got {res2['user_state']['passed']}"
-        print("✅ condition true branch passed")
+        async with aiosqlite.connect(db_path) as db:
+            db.row_factory = aiosqlite.Row
+            # In the new architecture, user state lives in the bot's own DB.
+            from app.database_bots import sync_subscriber_data
+            await sync_subscriber_data(2, ui, extra_vars={"score": 50})
+            r2 = DAGRunner(bot_id=2, db=db)
+            res2 = await r2.execute_flow("callback", "check", ui)
+            assert res2["user_state"]["passed"] == "yes", f"expected 'yes' got {res2['user_state']['passed']}"
+            print("✅ condition true branch passed")
 
     try:
         os.remove(db_path)

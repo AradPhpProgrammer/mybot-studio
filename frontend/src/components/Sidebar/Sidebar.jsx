@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bot, LogOut, User } from 'lucide-react';
+import { Bot, LogOut, User, Blocks, Settings } from 'lucide-react';
 import { useI18n } from '../../locales/i18n';
 
 export default function Sidebar({ activeTab, onTabChange, onLogout, collapsed, onToggleCollapse }) {
@@ -8,8 +8,8 @@ export default function Sidebar({ activeTab, onTabChange, onLogout, collapsed, o
 
   const navItems = [
     { id: 'profiles', label: t('sidebar.profiles'), icon: Bot },
-    { id: 'plugins', label: t('sidebar.plugins'), icon: Bot },
-    { id: 'settings', label: t('sidebar.settings'), icon: Bot },
+    { id: 'plugins', label: t('sidebar.plugins'), icon: Blocks },
+    { id: 'settings', label: t('sidebar.settings'), icon: Settings },
   ];
 
   return (
@@ -60,8 +60,14 @@ export default function Sidebar({ activeTab, onTabChange, onLogout, collapsed, o
           className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs text-muted hover:text-foreground hover:bg-surface-secondary transition-colors"
           title={t('sidebar.toggle_menu')}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={collapsed ? 'rotate-180' : ''}>
-            <path d="M15 18l-6-6 6-6"/>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            {collapsed ? (
+              /* Expand: arrow pointing left into canvas */
+              <path d="M15 18l-6-6 6-6" />
+            ) : (
+              /* Collapse: arrow pointing right to sidebar edge */
+              <path d="M9 18l6-6-6-6" />
+            )}
           </svg>
           {!collapsed && <span>{t('sidebar.toggle_menu')}</span>}
         </button>

@@ -1,8 +1,10 @@
 import React from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Database, Clock, Globe, BellRing } from 'lucide-react';
+import { useI18n } from '../../locales/i18n';
 
 export default function ActionNode({ id, data, selected, type }) {
+  const { t } = useI18n();
   const { setNodes } = useReactFlow();
   const nodeId = id || data?.id;
   const update = (field, value) => setNodes(nds => nds.map(n => n.id === nodeId ? { ...n, data: { ...n.data, [field]: value } } : n));
@@ -34,17 +36,33 @@ export default function ActionNode({ id, data, selected, type }) {
         </div>
       </div>
 
-      <div className="p-3 space-y-2 nodrag nopan">
+      <div className="p-3 space-y-2.5 nodrag nopan">
         {isHttp && (
           <>
-            <select value={data.method || 'GET'} onChange={e => update('method', e.target.value)}
-              className="w-full px-2 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] font-mono text-foreground outline-none focus:border-purple-500">
-              {['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-            <input type="text" value={data.url || ''} onChange={e => update('url', e.target.value)} placeholder="https://api.example.com..."
-              className="w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] font-mono text-foreground outline-none focus:border-purple-500" />
-            <input type="text" value={data.output_variable || ''} onChange={e => update('output_variable', e.target.value)} placeholder="Output variable (e.g. api_response)"
-              className="w-full px-2.5 py-1.5 rounded-lg bg-surface-tertiary border border-border text-[11px] font-mono text-foreground outline-none focus:border-purple-500" />
+            <div className="text-[10px] text-muted flex items-center justify-between">
+              <span>Web Request (API / Webhook)</span>
+              <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                ${data.output_variable || 'http_response'}
+              </span>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] text-muted font-medium">HTTP Method</label>
+              <select value={data.method || 'GET'} onChange={e => update('method', e.target.value)}
+                className="w-full px-2 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] font-mono text-foreground outline-none focus:border-purple-500">
+                {['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] text-muted font-medium">Target URL (Endpoints & AI APIs)</label>
+              <input type="text" value={data.url || ''} onChange={e => update('url', e.target.value)} placeholder="https://api.openai.com/v1/chat..."
+                className="w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] font-mono text-foreground outline-none focus:border-purple-500" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] text-muted font-medium">Result Variable (stored as custom var)</label>
+              <input type="text" value={data.output_variable ?? 'http_response'} onChange={e => update('output_variable', e.target.value)} placeholder="http_response"
+                className="w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-purple-500/40 text-[11px] font-mono text-purple-300 outline-none focus:border-purple-500" />
+              <div className="text-[9px] text-muted">Available in next nodes as <span className="font-mono text-purple-400 font-semibold">${data.output_variable || 'http_response'}</span></div>
+            </div>
           </>
         )}
         {isDelay && (
@@ -72,9 +90,9 @@ export default function ActionNode({ id, data, selected, type }) {
           <>
             <input type="text" value={data.text || ''} onChange={e => update('text', e.target.value)} placeholder="Alert text"
               className="w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] text-foreground outline-none focus:border-blue-500" />
-            <label className="flex items-center gap-2 text-[11px] text-foreground">
-              <input type="checkbox" checked={!!data.show_alert} onChange={e => update('show_alert', e.target.checked)} className="accent-blue-500" />
-              Show as popup alert
+            <label className="flex items-center gap-2 text-[11px] cursor-pointer select-none text-white dark:text-white">
+              <input type="checkbox" checked={!!data.show_alert} onChange={e => update('show_alert', e.target.checked)} className="accent-blue-500 w-3.5 h-3.5" />
+              <span className="text-foreground dark:text-slate-100">{t('nodes.action_answer_callback.show_alert_label') || 'Show as popup alert'}</span>
             </label>
           </>
         )}

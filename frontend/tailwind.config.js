@@ -31,6 +31,8 @@ export default {
         'surface-foreground': 'var(--surface-foreground)',
         'surface-secondary': 'var(--surface-secondary)',
         'surface-secondary-foreground': 'var(--surface-secondary-foreground)',
+        'surface-tertiary': 'var(--surface-tertiary)',
+        'surface-tertiary-foreground': 'var(--surface-tertiary-foreground)',
         warning: 'var(--warning)',
         'warning-foreground': 'var(--warning-foreground)',
       },

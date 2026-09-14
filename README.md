@@ -1,101 +1,71 @@
-<div align="center">
+# MyBot Studio
 
-# 🚀 MyBot Engine & Studio
-### The Self-Hosted, Visual No-Code Telegram Bot Platform
-**Unreal Engine Blueprints & n8n Architecture for Telegram Bots**
+A self-hosted, visual execution engine and DAG builder for Telegram bots.
 
-[![License: AGPL-3.0 with Plugin Exception](https://img.shields.io/badge/License-AGPL%203.0%20with%20Plugin%20Exception-blue.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)](deploy/docker-compose.yml)
-[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg?logo=fastapi&logoColor=white)](backend/)
-[![React](https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB.svg?logo=react&logoColor=black)](frontend/)
-[![Telegram Bot API](https://img.shields.io/badge/Telegram%20Bot%20API-9.4%20%2F%2010.0-2CA5E0.svg?logo=telegram&logoColor=white)](https://core.telegram.org/bots/api)
-
-[**فارسی (Persian)**](docs/README.fa.md) | [**English**](docs/README.en.md) | [**Русский**](docs/README.ru.md) | [**العربية**](docs/README.ar.md)
-
-</div>
+MyBot Studio provides an offline-first, node-based workspace designed for deploying, orchestrating, and maintaining high-throughput Telegram bots without third-party vendor lock-in.
 
 ---
 
-## 🌟 Overview
+## Architectural Principles
 
-**MyBot** is an enterprise-grade, self-hosted visual platform for building and orchestrating complex Telegram bots without writing code. Inspired by the **DAG workflow execution of n8n** and the **visual scripting paradigm of Unreal Engine Blueprints**, MyBot combines an infinite node canvas with a **live, draggable, interactive Telegram chat mockup & simulator**.
-
----
-
-## 🔑 Default Admin Credentials
-
-When running for the first time:
-- **Username:** `admin`
-- **Password:** `admin1234`
-- *You can change your username and password at any time directly in the **Settings** tab.*
+- **Independent Bot Isolation**: Each bot runs against its own isolated SQLite storage (`bot_{id}.db`). Runtime user state, variable storage, and message flows are fully segregated.
+- **Deterministic DAG Execution**: Dynamic flows are compiled into directed acyclic graphs. Triggers (Commands, Callbacks, Reply Keyboards) resolve through an event-driven scheduler.
+- **Zero Cloud Dependencies**: Self-hosted stack powered by FastAPI and Aiogram 3 on the backend, with a Vite + ReactFlow interface on the frontend. Offline font rendering and localized assets.
+- **Network Resilience**: Native support for reverse proxies (Cloudflare Workers, HTTP/SOCKS5 tunnels) to operate reliably in restricted network topologies.
 
 ---
 
-## ✨ Key Capabilities
+## Installation
 
-1. **⚡ Unreal Engine & n8n Style Infinite Canvas:**
-   - Visual nodes for Commands, Triggers, Conditions (IF/Else), Multi-Media Messages, Dynamic NoSQL Variables, and External HTTP Webhooks.
-   - Quick search palette (`Space` or `Right-Click` on canvas) with instant category filtering.
+### Automated Production Deployment (Linux / VPS)
 
-2. **📱 Draggable Interactive Telegram Mockup & Live Simulator:**
-   - Real-time mobile chat preview floating on your canvas.
-   - **Edit Mode:** Rich Text Toolbar (Bold, Italic, Spoiler, Expandable Blockquotes, Monospace Tables) + Drag-and-Drop Inline Keyboard editor with native Telegram Bot API colors (`primary` blue, `success` green, `danger` red).
-   - **Simulator Mode:** Interactive live in-browser testing! Type `/start` or click inline buttons to test flows with zero phone usage.
+Run the single-line installer on any clean Ubuntu 22.04+ or Debian 12 machine with root privileges:
 
-3. **🔄 Zero-Downtime Bot Worker (Decoupled Microservices):**
-   - The bot engine runs as an independent 24/7 background process. Updating or restarting the admin panel causes **zero seconds of downtime** for your live Telegram bots!
-
-4. **⚡ SQLite WAL Mode with NoSQL Flexibility:**
-   - Single-file database with zero overhead.
-   - Stores unlimited dynamic user variables inside structured JSON fields with high-performance SQLite JSON extraction functions.
-
-5. **🧩 WordPress-Style Plugin Architecture:**
-   - **Toolkit Plugins:** Add custom action nodes (e.g., ZarinPal payment gateway, AI ChatGPT nodes, SMS services).
-   - **Admin Plugins:** Add dashboard tools (e.g., Broadcast tool with 30 msgs/sec rate-limiting).
-
-6. **🌐 1-File Internationalization (i18n) & Font System:**
-   - Default English (🇺🇸) interface with instant switching to Persian (🇮🇷), Russian (🇷🇺), and Arabic (🇸🇦).
-   - Add any new language simply by dropping a `.json` file in `locales/` or uploading via Settings.
-   - Add any custom font with 1-click `.woff2` / `.ttf` upload or Google Fonts CDN link.
-
-7. **🛡️ Censorship-Resistant (Cloudflare Worker & SOCKS5 Proxy):**
-   - Direct integration with Cloudflare reverse proxies (e.g., `andro-cfw`) and local proxies for restricted network environments (such as Iran).
-
----
-
-## 🚀 Quick Start & Installation
-
-### Option 1: One-Click Production VPS Installer (Linux / Ubuntu / Debian)
 ```bash
-curl -sSL https://raw.githubusercontent.com/AradPhpProgrammer/mybot/main/install.sh | sudo bash
-```
-*Prompts for IPv4 or Domain with automatic Let's Encrypt SSL, panel port, secret admin path, and Cloudflare reverse proxy.*
-
-### Option 2: Production Docker Compose (Any OS)
-```bash
-git clone https://github.com/AradPhpProgrammer/mybot.git
-cd mybot
-docker compose -f deploy/docker-compose.yml up -d --build
+bash <(curl -s https://raw.githubusercontent.com/AradPhpProgrammer/mybot-studio/refs/heads/master/install.sh)
 ```
 
-### Option 3: Local Run without Docker (Windows / Linux / macOS)
-- **Windows:** Double-click `start-local.bat`
-- **Linux / macOS:**
+The script configures Docker containers, creates required storage mounts, prompts for network bindings, and bootstraps the reverse proxy.
+
+### Local Development Setup
+
 ```bash
-chmod +x start-local.sh
-./start-local.sh
+# Clone the repository
+git clone https://github.com/AradPhpProgrammer/mybot-studio.git
+cd mybot-studio
+
+# Backend setup
+cd backend
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+python -m app.main
+
+# Frontend setup (in a separate shell)
+cd ../frontend
+npm install
+npm run dev
 ```
 
 ---
 
-## 🔄 Zero-Downtime Updates
+## Ecosystem & Extensions
 
-To update the studio without interrupting your Telegram bots:
-- **Linux:** `bash deploy/update.sh`
-- **Windows:** `deploy\update.bat`
+- **Plugins & Flow Templates**: Reusable integrations, custom nodes, and official flow templates (including AI agent pipelines) are indexed in the community repository:  
+  👉 **[MyBot Plugins Directory](https://github.com/AradPhpProgrammer/mybot-plugins)**
 
 ---
 
-## 📜 License
+## Contributing
 
-This project is licensed under the **GNU Affero General Public License v3 (AGPL-3.0)** with the **MyBot Extension & Plugin Exception**, allowing developers to create and sell proprietary commercial plugins while keeping the core platform open-source. See [LICENSE](LICENSE) for details.
+We welcome focused contributions from the community. To keep the project stable:
+
+1. **Bug Reports**: Open an issue detailing steps to reproduce, environment specifics, and error logs.
+2. **Pull Requests**: Pull requests must reference an existing issue. We do not accept unsolicited feature additions that increase surface area without prior discussion.
+3. **Coding Standards**: All backend code must pass the test harness (`python backend/tests/run_tests.py`), and the frontend must compile cleanly with zero linter errors.
+
+---
+
+## License
+
+This project is licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE).

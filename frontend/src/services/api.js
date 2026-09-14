@@ -132,6 +132,12 @@ export const api = {
     return res.json();
   },
 
+  async getBotDbSchema(botId) {
+    const res = await fetch(`${API_BASE}/bots/${botId}/database-schema`);
+    if (!res.ok) return null;
+    return res.json();
+  },
+
   // Simulator
   async dispatchSimulator(botId, eventType, payload, userInfo = {}) {
     const res = await fetch(`${API_BASE}/simulator/dispatch`, {

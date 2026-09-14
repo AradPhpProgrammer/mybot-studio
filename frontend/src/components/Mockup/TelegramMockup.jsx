@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Send, 
   Bot, 
@@ -13,7 +13,10 @@ import {
   MessageCircle,
   Move,
   Layers,
-  Terminal
+  Terminal,
+  Plus,
+  Keyboard,
+  Menu
 } from 'lucide-react';
 import { useI18n } from '../../locales/i18n';
 import RichTextToolbar from './RichTextToolbar';
@@ -25,7 +28,8 @@ export default function TelegramMockup({
   currentBot,
   selectedNode,
   onUpdateNodeData,
-  onFocusNode
+  onFocusNode,
+  nodes = []
 }) {
   const { t, dir } = useI18n();
   const [isMinimized, setIsMinimized] = useState(false);
@@ -52,7 +56,62 @@ export default function TelegramMockup({
   const [simInput, setSimInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [alertPopup, setAlertPopup] = useState(null);
+  const [replyMenuOpen, setReplyMenuOpen] = useState(false);
+  const [commandsMenuOpen, setCommandsMenuOpen] = useState(false);
   const chatBottomRef = useRef(null);
+
+  // Extract all slash commands defined across flow trigger nodes (/start, /help, etc.)
+  const flowCommands = useMemo(() => {
+    const cmds = [];
+    nodes.forEach((n) => {
+      if (n?.type === 'trigger_start') {
+        cmds.push({ command: '/start', description: 'Start the bot / main menu' });
+      } else if (n?.type === 'trigger_command') {
+        cmds.push({
+          command: n.data?.command || '/cmd',
+          description: n.data?.description || 'Custom command'
+        });
+      }
+    });
+    // Deduplicate by command name
+    const seen = new Set();
+    return cmds.filter((c) => {
+      if (seen.has(c.command)) return false;
+      seen.add(c.command);
+      return true;
+    });
+  }, [nodes]);
+
+  // Collect all reply keyboard buttons defined across the flow (keyboard_type === 'reply')
+  const replyKeyboardButtons = useMemo(() => {
+    const rows = [];
+    nodes.forEach((n) => {
+      const btns = n?.data?.buttons;
+      const kt = n?.data?.keyboard_type;
+      if (kt === 'reply' && Array.isArray(btns)) {
+        rows.push(...btns);
+      }
+    });
+    return rows;
+  }, [nodes]);
+
+  // Collect all callback identifiers defined across the flow so the keyboard
+  // editor and button-triggers can suggest existing user-defined IDs (no hardcoding).
+  const flowIdentifiers = useMemo(() => {
+    const ids = new Set();
+    nodes.forEach((n) => {
+      const btns = n?.data?.buttons;
+      if (Array.isArray(btns)) {
+        btns.forEach((row) => {
+          (row || []).forEach((b) => {
+            if (b?.callback_data) ids.add(b.callback_data);
+          });
+        });
+      }
+      if (n?.data?.callback_data) ids.add(n.data.callback_data);
+    });
+    return Array.from(ids);
+  }, [nodes]);
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -107,6 +166,14 @@ export default function TelegramMockup({
 </pre>`;
     const currentText = selectedNode.data.text || '';
     onUpdateNodeData(selectedNode.id, { ...selectedNode.data, text: currentText + '\n' + tableStr });
+  };
+
+  // Handle clicking a reply keyboard button in the simulator: sends the button's
+  // identifier (device/ID = text if no callback_data) as a user message with type 'message'.
+  const sendReplyKeyboardPress = async (btn) => {
+    setReplyMenuOpen(false);
+    const identifier = btn.callback_data || btn.text || btn.id || 'Keyboard';
+    await sendSimulatorMessage(identifier, 'message');
   };
 
   // Dispatch Simulator Event
@@ -170,6 +237,7 @@ export default function TelegramMockup({
 
   const isEditNode = selectedNode?.type === 'action_edit_message';
   const isMessageNode = selectedNode?.type === 'action_send_message' || isEditNode;
+  const isConditionNode = selectedNode?.type === 'action_condition';
 
   return (
     <div
@@ -294,10 +362,88 @@ export default function TelegramMockup({
               {/* Keyboard Editor */}
               <KeyboardEditor
                 buttons={selectedNode.data.buttons || []}
+                knownIdentifiers={flowIdentifiers}
                 onChange={(newButtons) =>
                   onUpdateNodeData(selectedNode.id, { ...selectedNode.data, buttons: newButtons })
                 }
               />
+            </div>
+          ) : isConditionNode ? (
+            <div className="space-y-4">
+              <div className="p-3 rounded-xl bg-surface border border-border space-y-3">
+                <div className="text-xs font-bold text-foreground flex items-center justify-between">
+                  <span>{t('nodes.action_condition.name') || 'Branch (If / Else)'}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/30 font-mono">
+                    Logic
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted">
+                  {t('nodes.action_condition.desc') || 'Branches execution flow based on condition.'}
+                </p>
+
+                {/* Input A */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-muted">Input A (Variable / Value):</label>
+                  <input
+                    type="text"
+                    value={selectedNode.data.input_a ?? ''}
+                    onChange={(e) =>
+                      onUpdateNodeData(selectedNode.id, { ...selectedNode.data, input_a: e.target.value })
+                    }
+                    placeholder="$balance"
+                    className="w-full bg-surface-secondary border border-border rounded-xl px-3 py-2 text-xs font-mono text-foreground placeholder:text-field-placeholder outline-none focus:border-accent"
+                  />
+                </div>
+
+                {/* Operator */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-muted">Operator:</label>
+                  <select
+                    value={selectedNode.data.operator || '>='}
+                    onChange={(e) =>
+                      onUpdateNodeData(selectedNode.id, { ...selectedNode.data, operator: e.target.value })
+                    }
+                    className="w-full bg-surface-secondary border border-border rounded-xl px-3 py-2 text-xs font-mono font-bold text-amber-400 outline-none focus:border-accent cursor-pointer"
+                  >
+                    {['>=', '<=', '==', '!=', '>', '<', 'and', 'or'].map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Input B */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-muted">Input B (Variable / Value):</label>
+                  <input
+                    type="text"
+                    value={selectedNode.data.input_b ?? ''}
+                    onChange={(e) =>
+                      onUpdateNodeData(selectedNode.id, { ...selectedNode.data, input_b: e.target.value })
+                    }
+                    placeholder="100"
+                    className="w-full bg-surface-secondary border border-border rounded-xl px-3 py-2 text-xs font-mono text-foreground placeholder:text-field-placeholder outline-none focus:border-accent"
+                  />
+                </div>
+              </div>
+
+              {/* Condition Live Preview Box (Inside floating editor) */}
+              <div className="p-4 rounded-2xl bg-surface-secondary/60 border border-border shadow-inner space-y-2">
+                <div className="text-[10px] uppercase font-bold text-muted tracking-wider">
+                  {t('mockup.preview_label') || 'Preview'}:
+                </div>
+                <div className="p-3 rounded-xl bg-surface border border-amber-500/30 text-center font-mono text-xs text-foreground shadow-xs">
+                  <span className="text-purple-400 font-semibold">{selectedNode.data.input_a || 'A'}</span>{' '}
+                  <span className="font-bold text-amber-400 px-1.5 py-0.5 rounded bg-amber-500/10">
+                    {selectedNode.data.operator || '>='}
+                  </span>{' '}
+                  <span className="text-emerald-400 font-semibold">{selectedNode.data.input_b || 'B'}</span>
+                </div>
+                <div className="text-[10px] text-muted text-center">
+                  True branch executes if condition holds, otherwise False branch.
+                </div>
+              </div>
             </div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center p-6 text-center text-muted space-y-2">
@@ -378,7 +524,13 @@ export default function TelegramMockup({
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" />
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:0.2s]" />
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:0.4s]" />
-                <span className="text-[11px] ms-1">{t('mockup.typing')}</span>
+                <span className="text-[11px] ms-1">
+                  {selectedNode?.data?.media_type === 'photo'
+                    ? (t('mockup.uploading_photo') || 'Sending photo...')
+                    : selectedNode?.data?.media_type === 'video'
+                    ? (t('mockup.uploading_video') || 'Sending video...')
+                    : (t('mockup.typing') || 'Typing...')}
+                </span>
               </div>
             )}
             <div ref={chatBottomRef} />
@@ -411,8 +563,102 @@ export default function TelegramMockup({
                 sendSimulatorMessage(simInput.trim(), isCmd ? 'command' : 'message');
               }
             }}
-            className="p-2 bg-surface border-t border-border flex items-center gap-2"
+            className="p-2 bg-surface border-t border-border flex items-center gap-2 relative"
           >
+            {/* Blue Telegram Menu Button */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setCommandsMenuOpen(!commandsMenuOpen);
+                  setReplyMenuOpen(false);
+                }}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold transition-all shadow-sm active:scale-95"
+                title="Telegram Bot Commands Menu"
+              >
+                <Menu size={13} />
+                <span>Menu</span>
+              </button>
+
+              {/* Telegram Commands Menu Popup */}
+              {commandsMenuOpen && (
+                <div className="absolute bottom-12 start-0 w-64 bg-surface border border-border rounded-2xl shadow-2xl p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="px-2 py-1 text-[10px] font-bold text-muted uppercase tracking-wider border-b border-border flex items-center justify-between">
+                    <span>{t('mockup.bot_commands') || 'Bot Commands'}</span>
+                    <span className="text-blue-400 font-mono text-[9px]">{flowCommands.length}</span>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto space-y-0.5">
+                    {flowCommands.map((c, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setCommandsMenuOpen(false);
+                          sendSimulatorMessage(c.command, 'command');
+                        }}
+                        className="w-full flex items-center justify-between p-2 rounded-xl text-start hover:bg-surface-secondary text-foreground text-xs transition-colors"
+                      >
+                        <span className="font-mono text-blue-400 font-semibold">{c.command}</span>
+                        <span className="text-[10px] text-muted truncate max-w-[120px]">{c.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Reply Keyboard (+) Button */}
+            <button
+              type="button"
+              onClick={() => setReplyMenuOpen(!replyMenuOpen)}
+              className={`p-2 rounded-xl border transition-all ${
+                replyMenuOpen
+                  ? 'bg-accent text-accent-foreground border-accent'
+                  : 'bg-surface-secondary text-muted hover:text-foreground border-border'
+              }`}
+              title={t('mockup.open_reply_keyboard') || 'Open Reply Keyboard Buttons'}
+            >
+              <Plus size={13} className={replyMenuOpen ? 'rotate-45 transition-transform' : 'transition-transform'} />
+            </button>
+
+            {/* Floating Reply Keyboard Menu */}
+            {replyMenuOpen && (
+              <div className="absolute bottom-12 start-2 end-2 bg-surface border border-border rounded-2xl shadow-2xl p-3 z-50 space-y-2 animate-in fade-in zoom-in-95 duration-100 max-h-56 overflow-y-auto">
+                <div className="flex items-center justify-between pb-1 border-b border-border text-[10px] font-bold text-muted uppercase tracking-wider">
+                  <span className="flex items-center gap-1.5">
+                    <Keyboard size={12} className="text-red-400" />
+                    <span>{t('mockup.reply_keyboard') || 'Reply Keyboard'}</span>
+                  </span>
+                  <span className="text-[9px] font-normal text-muted/70">
+                    {replyKeyboardButtons.length} {t('mockup.buttons_available') || 'rows'}
+                  </span>
+                </div>
+
+                {replyKeyboardButtons.length === 0 ? (
+                  <div className="p-3 text-center text-xs text-muted">
+                    {t('mockup.no_reply_buttons') || 'No reply keyboard defined in this bot. Add a Message node and set keyboard type to Reply.'}
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {replyKeyboardButtons.map((row, rIdx) => (
+                      <div key={rIdx} className="flex gap-1.5">
+                        {row.map((btn, bIdx) => (
+                          <button
+                            key={bIdx}
+                            type="button"
+                            onClick={() => sendReplyKeyboardPress(btn)}
+                            className="flex-1 py-1.5 px-2.5 rounded-xl bg-surface-secondary hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-400 border border-border text-foreground text-xs font-medium text-center truncate transition-all shadow-xs active:scale-95"
+                          >
+                            {btn.text}
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             <input
               type="text"
               value={simInput}

@@ -37,7 +37,7 @@ STARTER_TEMPLATE_NODES = [
         "position": {"x": 480, "y": 180},
         "data": {
             "media_type": "text",
-            "text": "👋 Hello {first_name}!\nWelcome to MyBot Studio.\nChoose an option below:",
+            "text": "👋 Hello $first_name!\nWelcome to MyBot Studio.\nChoose an option below:",
             "media_url": "",
             "parse_mode": "HTML",
             "enable_auto_chat_action": True,

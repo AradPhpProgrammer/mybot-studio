@@ -7,7 +7,7 @@ import {
   ReactFlowProvider,
   useReactFlow
 } from '@xyflow/react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Unlink } from 'lucide-react';
 
 import TriggerNode from '../Nodes/TriggerNode';
 import MessageNode from '../Nodes/MessageNode';
@@ -40,7 +40,8 @@ function CanvasInner({
   onDeleteNode,
   onDeleteEdge,
   theme,
-  dirty
+  dirty,
+  onNodeDoubleClick
 }) {
   const { t } = useI18n();
 
@@ -49,6 +50,7 @@ function CanvasInner({
       trigger_start: TriggerNode,
       trigger_command: TriggerNode,
       trigger_callback: TriggerNode,
+      trigger_keyboard: TriggerNode,
       trigger_message: TriggerNode,
       action_send_message: MessageNode,
       action_edit_message: EditMessageNode,
@@ -66,7 +68,8 @@ function CanvasInner({
     []
   );
 
-  const [contextMenu, setContextMenu] = useState(null); // {x, y, type: 'pane'|'node'|'edge', id}
+  // Context menu state: { x, y, type: 'pane'|'node'|'edge', id }
+  const [contextMenu, setContextMenu] = useState(null);
   const { screenToFlowPosition } = useReactFlow();
 
   // Close menu on outside click / escape
@@ -96,17 +99,14 @@ function CanvasInner({
       let animated = !dirty;
 
       if (isError) {
-        // Error state: Dashed Red
         stroke = '#ef4444';
         strokeDasharray = '5 4';
         animated = false;
       } else if (dirty || edge.data?.unsaved) {
-        // Unsaved state: Dashed Warning/Amber
         stroke = 'var(--warning, #f59e0b)';
         strokeDasharray = '6 4';
         animated = true;
       } else {
-        // Saved state: Solid Accent Blue
         stroke = 'var(--accent, #3b82f6)';
         strokeDasharray = undefined;
         animated = false;
@@ -125,26 +125,37 @@ function CanvasInner({
     });
   }, [edges, nodes, dirty]);
 
+  const isDark = theme === 'dark';
+
+  // Right-click on empty pane -> open the add-node palette at cursor (App opens QuickSearchPalette)
   const handlePaneCtx = (e) => {
     e.preventDefault();
     const point = { x: e.clientX, y: e.clientY };
-    onPaneContextMenu?.(point);
-    setContextMenu({ ...point, type: 'pane' });
+    if (onPaneContextMenu) onPaneContextMenu(point);
   };
 
+  // Right-click on a node -> local menu with Add (new node at this spot) + Delete
   const handleNodeCtx = (e, node) => {
     e.preventDefault();
     e.stopPropagation();
     setContextMenu({ x: e.clientX, y: e.clientY, type: 'node', id: node.id });
   };
 
+  // Right-click on an edge -> delete connection (or add)
   const handleEdgeCtx = (e, edge) => {
     e.preventDefault();
     e.stopPropagation();
     setContextMenu({ x: e.clientX, y: e.clientY, type: 'edge', id: edge.id });
   };
 
-  const isDark = theme === 'dark';
+  const handleAddHereFromMenu = (ev) => {
+    ev.stopPropagation();
+    const pos = screenToFlowPosition({ x: contextMenu.x, y: contextMenu.y });
+    onAddNodeAt?.(contextMenu.x, contextMenu.y, pos);
+    setContextMenu(null);
+  };
+
+  const handleCloseMenu = () => setContextMenu(null);
 
   return (
     <div className="w-full h-full relative">
@@ -159,7 +170,6 @@ function CanvasInner({
         onEdgeContextMenu={handleEdgeCtx}
         onPaneContextMenu={handlePaneCtx}
         nodeTypes={nodeTypes}
-        dragHandle=".custom-drag-handle"
         deleteKeyCode={['Backspace', 'Delete']}
         edgesFocusable
         nodesFocusable
@@ -170,68 +180,97 @@ function CanvasInner({
         className={isDark ? 'dark-canvas' : 'light-canvas'}
         minZoom={0.2}
         maxZoom={2.5}
+        onMoveStart={handleCloseMenu}
       >
         <Background
-          color={isDark ? '#334155' : '#cbd5e1'}
+          color={isDark ? '#1e293b' : '#cbd5e1'}
           gap={20}
           size={2}
         />
-        <Controls className="!bg-surface !border-border !rounded-xl !shadow-lg !overflow-hidden [&>button]:!bg-surface [&>button]:!border-border [&>button]:!text-foreground" />
+        <Controls
+          className={
+            '!rounded-xl !shadow-lg !overflow-hidden ' +
+            (isDark
+              ? '!bg-[#0d1322] !border !border-[#1e293b]'
+              : '!bg-white !border !border-gray-200')
+          }
+        />
         <MiniMap
           position="top-left"
-          className={`!bg-surface !border-border !rounded-xl !shadow-lg !overflow-hidden ${isDark ? '!bg-[#151b2d]' : ''}`}
-          nodeColor={() => (isDark ? '#475569' : '#cbd5e1')}
-          maskColor={isDark ? 'rgba(10,15,24,0.85)' : 'rgba(255,255,255,0.85)'}
+          className={
+            '!rounded-xl !shadow-lg !overflow-hidden ' +
+            (isDark
+              ? '!bg-[#0a0f1d] !border !border-[#1e293b]'
+              : '!bg-white !border !border-gray-200')
+          }
+          nodeColor={() => (isDark ? '#334155' : '#cbd5e1')}
+          maskColor={isDark ? 'rgba(6,9,19,0.8)' : 'rgba(255,255,255,0.85)'}
           style={{ zIndex: 5 }}
           pannable={false}
           zoomable={false}
         />
       </ReactFlow>
 
-      {/* Context Menu */}
+      {/* Right-click Context Menu */}
       {contextMenu && (
         <div
-          className="fixed z-[60] bg-surface border border-border rounded-xl shadow-2xl p-1.5 min-w-[180px]"
+          className="fixed z-[60] bg-surface border border-border rounded-xl shadow-2xl p-1.5 min-w-[190px]"
           style={{ left: contextMenu.x, top: contextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
           {contextMenu.type === 'pane' && (
             <button
-              onClick={() => {
-                const pos = screenToFlowPosition({ x: contextMenu.x, y: contextMenu.y });
-                onAddNodeAt?.(contextMenu.x, contextMenu.y, pos);
-                setContextMenu(null);
-              }}
+              onClick={handleAddHereFromMenu}
               className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-foreground hover:bg-surface-secondary transition-colors"
             >
               <Plus size={14} className="text-accent" />
               <span>{t('canvas.add_node_here') || 'Add Node Here'}</span>
             </button>
           )}
-          {(contextMenu.type === 'node' || contextMenu.type === 'edge') && (
+
+          {contextMenu.type === 'node' && (
             <>
+              <button
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  onAddNodeAt?.(contextMenu.x, contextMenu.y);
+                  setContextMenu(null);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-foreground hover:bg-surface-secondary transition-colors"
+              >
+                <Plus size={14} className="text-accent" />
+                <span>{t('canvas.add_node_here') || 'Add Node Next'}</span>
+              </button>
               <button
                 onClick={() => {
                   onDeleteNode?.(contextMenu.id);
                   setContextMenu(null);
                 }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs ${
-                  contextMenu.type === 'node' ? 'text-foreground hover:bg-surface-secondary' : 'hidden'
-                }`}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-danger hover:bg-danger/10 transition-colors"
               >
-                <Trash2 size={14} className="text-danger" />
+                <Trash2 size={14} />
                 <span>{t('canvas.delete_node') || 'Delete Node'}</span>
+              </button>
+            </>
+          )}
+
+          {contextMenu.type === 'edge' && (
+            <>
+              <button
+                onClick={handleAddHereFromMenu}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-foreground hover:bg-surface-secondary transition-colors"
+              >
+                <Plus size={14} className="text-accent" />
+                <span>{t('canvas.add_node_here') || 'Add Node Here'}</span>
               </button>
               <button
                 onClick={() => {
                   onDeleteEdge?.(contextMenu.id);
                   setContextMenu(null);
                 }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs ${
-                  contextMenu.type === 'edge' ? 'text-foreground hover:bg-surface-secondary' : 'hidden'
-                }`}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-danger hover:bg-danger/10 transition-colors"
               >
-                <Trash2 size={14} className="text-danger" />
+                <Unlink size={14} />
                 <span>{t('canvas.delete_connection') || 'Delete Connection'}</span>
               </button>
             </>

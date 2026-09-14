@@ -17,7 +17,8 @@ import {
   Plus,
   Minus,
   XCircle,
-  DivideCircle
+  DivideCircle,
+  Keyboard
 } from 'lucide-react';
 import { useI18n } from '../../locales/i18n';
 
@@ -44,11 +45,20 @@ const NODE_DEFINITIONS = [
   {
     type: 'trigger_callback',
     category: 'triggers',
-    title: 'Button Click (Callback)',
+    title: 'Inline Button Event',
     desc: 'Fires when user clicks an inline keyboard button.',
     icon: MousePointerClick,
-    color: 'text-emerald-500',
+    color: 'text-blue-500',
     data: { callback_data: 'btn_action' }
+  },
+  {
+    type: 'trigger_keyboard',
+    category: 'triggers',
+    title: 'Reply Keyboard Event',
+    desc: 'Fires when user taps a persistent reply keyboard button.',
+    icon: Keyboard,
+    color: 'text-red-400',
+    data: { callback_data: 'btn_menu' }
   },
   {
     type: 'trigger_message',

@@ -118,6 +118,34 @@ async def init_db():
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+
+        # 8. User-defined Button Identifiers (stored per bot in local studio DB)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS bot_button_identifiers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                bot_id INTEGER NOT NULL,
+                identifier TEXT NOT NULL,
+                button_type TEXT NOT NULL DEFAULT 'inline', -- 'inline' or 'reply'
+                label TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(bot_id, identifier),
+                FOREIGN KEY (bot_id) REFERENCES bots(id) ON DELETE CASCADE
+            );
+        """)
+
+        # 9. User-defined Custom Variables (stored per bot in local studio DB)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS bot_custom_variables (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                bot_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                description TEXT,
+                default_value TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(bot_id, name),
+                FOREIGN KEY (bot_id) REFERENCES bots(id) ON DELETE CASCADE
+            );
+        """)
         
         await db.commit()
         logger.info("Database initialized successfully with WAL mode.")

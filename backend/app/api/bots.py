@@ -1,12 +1,16 @@
 import json
+import logging
 from pathlib import Path
 from typing import Any, Dict, List
 import aiosqlite
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 
 from app.database import get_db
+from app.database_bots import AVAILABLE_USER_FIELDS, DEFAULT_TRACKED_FIELDS, get_bot_db, get_bot_db_path
 from app.models.schemas import BotCreateRequest, BotResponse, BotSettingsUpdate
 from app.telegram.bot_manager import bot_manager
+
+logger = logging.getLogger("MyBot.BotsAPI")
 
 router = APIRouter(prefix="/api/bots", tags=["bots"])
 
@@ -152,3 +156,38 @@ async def upload_bot_avatar(bot_id: int, file: UploadFile = File(...), db: aiosq
     await db.commit()
 
     return {"status": "ok", "photo_url": photo_url}
+
+
+@router.get("/{bot_id}/database-schema")
+async def get_bot_database_schema(bot_id: int, db: aiosqlite.Connection = Depends(get_db)) -> Dict[str, Any]:
+    """Returns database configuration for this specific bot: isolated DB path, active tracked fields, and available fields."""
+    cursor = await db.execute("SELECT settings FROM bots WHERE id = ?", (bot_id,))
+    row = await cursor.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Bot not found")
+
+    settings_dict = json.loads(row["settings"]) if row["settings"] else {}
+    tracked = settings_dict.get("tracked_user_fields")
+    if not isinstance(tracked, list):
+        tracked = DEFAULT_TRACKED_FIELDS
+
+    # Query subscriber count from this bot's own dedicated database
+    sub_count = 0
+    try:
+        bot_db = await get_bot_db(bot_id)
+        c = await bot_db.execute("SELECT COUNT(*) AS total FROM subscribers")
+        r = await c.fetchone()
+        sub_count = r["total"] if r else 0
+        await bot_db.close()
+    except Exception as e:
+        logger.warning(f"Could not read subscriber count from bot_{bot_id}.db: {e}")
+
+    return {
+        "bot_id": bot_id,
+        "database_file": str(get_bot_db_path(bot_id).name),
+        "database_absolute_path": str(get_bot_db_path(bot_id)),
+        "subscribers_count": sub_count,
+        "tracked_fields": tracked,
+        "available_fields": AVAILABLE_USER_FIELDS
+    }
+

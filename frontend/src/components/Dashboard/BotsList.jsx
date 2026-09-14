@@ -145,16 +145,14 @@ export default function BotsList({
                         ) : (
                           <label
                             htmlFor={`avatar-input-${bot.id}`}
-                            className="w-14 h-14 rounded-full border-2 border-dashed border-border bg-surface-secondary/60 flex items-center justify-center text-muted group-hover:border-accent/60 group-hover:text-accent transition-colors cursor-pointer"
+                            className="w-14 h-14 rounded-full border-2 border-dashed border-border bg-surface-secondary/60 flex items-center justify-center text-muted group-hover:text-accent transition-colors cursor-pointer"
                             title={t('dashboard.upload_photo') || 'Upload Photo'}
                             onClick={(e) => e.stopPropagation()}
                           >
                             {uploadingId === bot.id ? (
                               <Loader2 size={16} className="animate-spin text-accent" />
                             ) : (
-                              <div className="w-5 h-5 border-2 border-current rounded-sm flex items-center justify-center">
-                                <Upload size={11} />
-                              </div>
+                              <Upload size={18} className="text-muted group-hover:text-accent transition-colors" />
                             )}
                           </label>
                         )}
