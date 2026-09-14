@@ -107,6 +107,31 @@ export const api = {
     return res.json();
   },
 
+  async refreshBotInfo(botId) {
+    const res = await fetch(`${API_BASE}/bots/${botId}/refresh`, {
+      method: 'POST',
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Refresh failed');
+    }
+    return res.json();
+  },
+
+  async uploadBotAvatar(botId, file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${API_BASE}/bots/${botId}/avatar`, {
+      method: 'POST',
+      body: formData
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Upload failed');
+    }
+    return res.json();
+  },
+
   // Simulator
   async dispatchSimulator(botId, eventType, payload, userInfo = {}) {
     const res = await fetch(`${API_BASE}/simulator/dispatch`, {

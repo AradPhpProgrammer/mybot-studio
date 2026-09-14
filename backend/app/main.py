@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api.auth import router as auth_router
 from app.api.bots import router as bots_router
@@ -52,6 +53,12 @@ app.include_router(plugins_router)
 app.include_router(system_router)
 app.include_router(i18n_router)
 app.include_router(fonts_router)
+
+# Serve uploaded bot photos
+from pathlib import Path
+_UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
+_UPLOAD_DIR.mkdir(exist_ok=True)
+app.mount("/media", StaticFiles(directory=_UPLOAD_DIR), name="uploads")
 
 @app.get("/")
 async def health_check():

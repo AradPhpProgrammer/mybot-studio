@@ -53,6 +53,7 @@ async def run_bot_polling(bot_id: int, token: str, settings_dict: dict):
                 markup = m.get("reply_markup")
                 mtype = m.get("media_type", "text")
                 murl = m.get("media_url", "")
+                is_edit = m.get("is_edit", False)
 
                 reply_markup = None
                 if markup and "inline_keyboard" in markup:
@@ -69,6 +70,26 @@ async def run_bot_polling(bot_id: int, token: str, settings_dict: dict):
                             for row in markup["inline_keyboard"]
                         ]
                     )
+
+                if is_edit:
+                    if text:
+                        # Edit the triggering message itself (callback message)
+                        if message.reply_to_message and message.reply_to_message.message_id:
+                            await bot.edit_message_text(
+                                chat_id=message.chat.id,
+                                message_id=message.reply_to_message.message_id,
+                                text=text, parse_mode=ParseMode.HTML, reply_markup=reply_markup
+                            )
+                        else:
+                            await bot.send_message(chat_id=message.chat.id, text=text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
+                    else:
+                        # No text to edit -> warn the user
+                        await bot.send_message(
+                            chat_id=message.chat.id,
+                            text="⚠️ This flow tried to edit a message, but no text was provided.",
+                            parse_mode=ParseMode.HTML
+                        )
+                    continue
 
                 if mtype == "text":
                     await bot.send_message(chat_id=message.chat.id, text=text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
@@ -100,6 +121,7 @@ async def run_bot_polling(bot_id: int, token: str, settings_dict: dict):
             for m in res.get("messages", []):
                 text = m.get("text", "")
                 markup = m.get("reply_markup")
+                is_edit = m.get("is_edit", False)
                 reply_markup = None
                 if markup and "inline_keyboard" in markup:
                     reply_markup = types.InlineKeyboardMarkup(
@@ -115,6 +137,28 @@ async def run_bot_polling(bot_id: int, token: str, settings_dict: dict):
                             for row in markup["inline_keyboard"]
                         ]
                     )
+
+                if is_edit:
+                    if text and callback.message and callback.message.message_id:
+                        # Edit the message that carried the tapped button
+                        await bot.edit_message_text(
+                            chat_id=chat_id,
+                            message_id=callback.message.message_id,
+                            text=text,
+                            parse_mode=ParseMode.HTML,
+                            reply_markup=reply_markup
+                        )
+                    elif text:
+                        await bot.send_message(chat_id=chat_id, text=text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
+                    else:
+                        # No text -> warn the user
+                        await bot.send_message(
+                            chat_id=chat_id,
+                            text="⚠️ This flow tried to edit a message, but no text was provided.",
+                            parse_mode=ParseMode.HTML
+                        )
+                    continue
+
                 await bot.send_message(chat_id=chat_id, text=text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
 
             alerts = res.get("alerts", [])

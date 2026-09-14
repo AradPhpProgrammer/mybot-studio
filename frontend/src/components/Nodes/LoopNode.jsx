@@ -32,7 +32,7 @@ export default function LoopNode({ id, data, selected }) {
         className="!w-3 !h-3 !bg-violet-500 !border-2 !border-surface cursor-crosshair"
       />
 
-      <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border bg-surface-secondary/50 rounded-t-xl">
+      <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border bg-surface-secondary/50 rounded-t-xl cursor-grab active:cursor-grabbing custom-drag-handle">
         <div className="w-7 h-7 rounded-lg bg-violet-500/15 border border-violet-500/30 flex items-center justify-center text-violet-500">
           <Repeat size={15} />
         </div>
@@ -49,7 +49,7 @@ export default function LoopNode({ id, data, selected }) {
         </span>
       </div>
 
-      <div className="p-3 space-y-2.5">
+      <div className="p-3 space-y-2.5 nodrag nopan">
         <div className="flex items-center justify-between gap-2">
           <label className="text-[11px] font-medium text-muted">
             {t('inspector.loop_count') || 'Repeat Count'}:

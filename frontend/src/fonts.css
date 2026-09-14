@@ -1,8 +1,53 @@
-/* Arad Variable Font (variable Persian/Arabic font by Mohamad Darvishi) */
+/* Self-hosted fonts (offline-safe, no CDN dependency) */
+
+/* Arad — variable Persian/Arabic font (OFL, Mohamad Darvishi) */
 @font-face {
   font-family: 'Arad';
   font-style: normal;
   font-weight: 100 900;
   font-display: swap;
   src: url('/fonts/AradVF.woff2') format('woff2');
+}
+
+/* Vazirmatn — Persian/Arabic (Regular/Medium/Bold) */
+@font-face {
+  font-family: 'Vazirmatn';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/Vazirmatn-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Vazirmatn';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/Vazirmatn-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Vazirmatn';
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: swap;
+  src: url('/fonts/Vazirmatn-Bold.woff2') format('woff2');
+}
+
+/* Inter — Latin variable */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/Inter-var.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+20AC, U+2122;
+}
+
+/* JetBrains Mono — monospace variable */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/JetBrainsMono-var.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+2000-206F, U+20AC;
 }

@@ -1,7 +1,8 @@
 import json
+from pathlib import Path
 from typing import Any, Dict, List
 import aiosqlite
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 
 from app.database import get_db
 from app.models.schemas import BotCreateRequest, BotResponse, BotSettingsUpdate
@@ -18,13 +19,15 @@ async def list_bots(db: aiosqlite.Connection = Depends(get_db)):
     rows = await cursor.fetchall()
     bots = []
     for r in rows:
+        s = json.loads(r["settings"]) if r["settings"] else {}
         bots.append({
             "id": r["id"],
             "name": r["name"],
             "username": r["username"],
             "telegram_bot_id": r["telegram_bot_id"],
             "is_active": bool(r["is_active"]),
-            "settings": json.loads(r["settings"]) if r["settings"] else {},
+            "settings": s,
+            "photo_url": s.get("photo_url"),
             "created_at": str(r["created_at"])
         })
     return bots
@@ -53,13 +56,15 @@ async def get_bot(bot_id: int, db: aiosqlite.Connection = Depends(get_db)):
     bot = await cursor.fetchone()
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")
+    settings_dict = json.loads(bot["settings"]) if bot["settings"] else {}
     return {
         "id": bot["id"],
         "name": bot["name"],
         "username": bot["username"],
         "telegram_bot_id": bot["telegram_bot_id"],
         "is_active": bool(bot["is_active"]),
-        "settings": json.loads(bot["settings"]) if bot["settings"] else {},
+        "settings": settings_dict,
+        "photo_url": settings_dict.get("photo_url"),
         "created_at": str(bot["created_at"])
     }
 
@@ -108,3 +113,42 @@ async def delete_bot(bot_id: int, db: aiosqlite.Connection = Depends(get_db)):
 async def sync_commands(bot_id: int, db: aiosqlite.Connection = Depends(get_db)):
     await bot_manager.sync_bot_commands(bot_id, db)
     return {"success": True, "message": "Commands synced with Telegram Bot API."}
+
+
+@router.post("/{bot_id}/refresh")
+async def refresh_bot(bot_id: int, db: aiosqlite.Connection = Depends(get_db)):
+    try:
+        updated = await bot_manager.refresh_bot_info(bot_id, db)
+        return {"status": "ok", "bot": updated}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{bot_id}/avatar")
+async def upload_bot_avatar(bot_id: int, file: UploadFile = File(...), db: aiosqlite.Connection = Depends(get_db)) -> Dict[str, Any]:
+    cursor = await db.execute("SELECT settings FROM bots WHERE id = ?", (bot_id,))
+    row = await cursor.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Bot not found")
+
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else "png"
+    if ext not in {"png", "jpg", "jpeg", "webp", "gif"}:
+        raise HTTPException(status_code=400, detail="Unsupported image type")
+
+    upload_dir = Path(__file__).resolve().parent.parent.parent / "uploads"
+    upload_dir.mkdir(exist_ok=True)
+    fname = f"bot_{bot_id}.{ext}"
+    dest = upload_dir / fname
+    content = await file.read()
+    dest.write_bytes(content)
+
+    photo_url = f"/media/{fname}"
+    settings_dict = json.loads(row["settings"]) if row["settings"] else {}
+    settings_dict["photo_url"] = photo_url
+    await db.execute("UPDATE bots SET settings = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                     (json.dumps(settings_dict), bot_id))
+    await db.commit()
+
+    return {"status": "ok", "photo_url": photo_url}

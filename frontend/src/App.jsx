@@ -341,6 +341,26 @@ export default function App() {
     }
   };
 
+  const handleRefreshBot = async (bot) => {
+    try {
+      await api.refreshBotInfo(bot.id);
+      await loadBots();
+    } catch (e) {
+      window.alert(e.message || 'Failed to refresh bot info');
+    }
+  };
+
+  const handleUploadAvatar = async (bot, file) => {
+    try {
+      const res = await api.uploadBotAvatar(bot.id, file);
+      await loadBots();
+      return res;
+    } catch (e) {
+      window.alert(e.message || 'Failed to upload photo');
+      throw e;
+    }
+  };
+
   // 1. Not Logged In -> Show Login Page
   if (!isAuthenticated) {
     return <LoginPage onLoginSuccess={() => setIsAuthenticated(true)} />;
@@ -358,6 +378,8 @@ export default function App() {
               onSelectBot={handleSelectBot}
               onBotCreated={loadBots}
               onDeleteBot={handleDeleteBot}
+              onRefreshBot={handleRefreshBot}
+              onUploadAvatar={handleUploadAvatar}
             />
           )}
 

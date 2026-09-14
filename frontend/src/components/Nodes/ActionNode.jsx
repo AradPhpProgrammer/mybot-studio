@@ -22,7 +22,7 @@ export default function ActionNode({ id, data, selected, type }) {
     <div className={`min-w-[260px] rounded-xl border bg-surface shadow-lg transition-all ${selected ? 'border-purple-500 ring-2 ring-purple-500/40' : 'border-border hover:border-muted'}`}>
       <Handle type="target" position={Position.Left} id="exec" className="!w-3 !h-3 !bg-purple-500 !border-2 !border-surface cursor-crosshair" />
 
-      <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border bg-surface-secondary/50 rounded-t-xl">
+      <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border bg-surface-secondary/50 rounded-t-xl cursor-grab active:cursor-grabbing custom-drag-handle">
         <div className={`w-7 h-7 rounded-lg border flex items-center justify-center ${iconColor}`}>
           <Icon size={15} />
         </div>
@@ -34,7 +34,7 @@ export default function ActionNode({ id, data, selected, type }) {
         </div>
       </div>
 
-      <div className="p-3 space-y-2">
+      <div className="p-3 space-y-2 nodrag nopan">
         {isHttp && (
           <>
             <select value={data.method || 'GET'} onChange={e => update('method', e.target.value)}

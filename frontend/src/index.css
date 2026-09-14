@@ -125,6 +125,28 @@ body {
 .react-flow__edge { pointer-events: stroke; cursor: pointer; }
 .react-flow__edge.selected .react-flow__edge-path { stroke: var(--danger); stroke-width: 3; }
 
+/* Prevent canvas pan/zoom while interacting with node inputs */
+.react-flow__node input,
+.react-flow__node textarea,
+.react-flow__node select,
+.react-flow__node [contenteditable],
+.nodrag,
+.nopan {
+  user-select: text;
+}
+.nopan {
+  touch-action: auto;
+}
+
+/* Force labels/text to inherit theme foreground so nothing stays light in dark mode */
+.react-flow__node div,
+.react-flow__node span,
+.react-flow__node input,
+.react-flow__node textarea,
+.react-flow__node select {
+  color: inherit;
+}
+
 /* Canvas Themes */
 .dark-canvas .react-flow__background { background-color: #0b1120; }
 .light-canvas .react-flow__background { background-color: #f1f5f9; }

@@ -45,7 +45,7 @@ export default function MathNode({ id, data, selected, type }) {
       />
 
       {/* Header */}
-      <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border bg-surface-secondary/50 rounded-t-xl">
+      <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border bg-surface-secondary/50 rounded-t-xl cursor-grab active:cursor-grabbing custom-drag-handle">
         <div className={`w-7 h-7 rounded-lg border flex items-center justify-center ${conf.color}`}>
           <Icon size={15} />
         </div>
@@ -63,7 +63,7 @@ export default function MathNode({ id, data, selected, type }) {
       </div>
 
       {/* Math Layout: A [op] B -> Output */}
-      <div className="p-3 space-y-2.5">
+      <div className="p-3 space-y-2.5 nodrag nopan">
         <div className="flex items-center gap-2">
           {/* Input A */}
           <input

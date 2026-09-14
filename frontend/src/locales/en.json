@@ -111,8 +111,10 @@
     "token_placeholder": "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ...",
     "verifying_token": "Verifying with Telegram...",
     "bot_verified": "Bot Profile Created",
-    "open_studio": "Open Studio Canvas"
-  },
+        "open_studio": "Open Studio Canvas",
+        "upload_photo": "Upload bot profile photo",
+        "refresh_bot": "Sync info from BotFather"
+      },
   "canvas": {
     "quick_add": "Quick Add Node (Space or Right Click)",
     "categories": {
@@ -149,7 +151,12 @@
     },
     "action_edit_message": {
       "name": "Edit Message",
-      "desc": "Updates previous message content on callback."
+      "desc": "Updates previous message content on callback.",
+      "category": "Message",
+      "text_placeholder": "New message text (type $ for variables)",
+      "connected": "Will edit the message sent by the connected node above.",
+      "not_connected": "Connect this node after a Send Message node to edit that message. Without text it will warn the user.",
+      "buttons_count": "Buttons: "
     },
     "action_answer_callback": {
       "name": "Answer Callback (Alert)",
@@ -299,6 +306,30 @@
     "auto_typing": "Auto Chat Action (Typing Indicator)",
     "auto_typing_desc": "Display typing / uploading status before sending",
     "cf_worker": "Cloudflare Worker Reverse Proxy URL",
-    "custom_proxy": "HTTP / SOCKS5 Proxy"
-  }
-}
+        "custom_proxy": "HTTP / SOCKS5 Proxy"
+      },
+      "variables": {
+        "first_name": "User's first name",
+        "last_name": "User's last name (optional)",
+        "username": "User's @username (no @)",
+        "user_id": "Numeric Telegram user ID",
+        "chat_id": "The current chat identifier",
+        "message_id": "The triggering message identifier",
+        "callback_data": "Tapped button callback value",
+        "payload": "Raw text / command content",
+        "date": "Event timestamp (unix)",
+        "balance": "User balance variable (if set)",
+        "ref_code": "Referral / deep-link code",
+        "referrer": "Who invited this user",
+        "inviter_id": "Telegram ID of inviter",
+        "deep_link": "Payload after /start deep link",
+        "bot_name": "Bot display name",
+        "bot_username": "Bot @username",
+        "starts": "Number of times user started",
+        "last_seen": "Timestamp of last interaction",
+        "day": "Current day (0-6)",
+        "hour": "Current hour (0-23)",
+        "now": "Current unix timestamp",
+        "random": "Random number 0-1"
+      }
+    }

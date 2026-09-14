@@ -168,7 +168,8 @@ export default function TelegramMockup({
     );
   }
 
-  const isMessageNode = selectedNode?.type === 'action_send_message';
+  const isEditNode = selectedNode?.type === 'action_edit_message';
+  const isMessageNode = selectedNode?.type === 'action_send_message' || isEditNode;
 
   return (
     <div
@@ -279,13 +280,15 @@ export default function TelegramMockup({
                 <div className="text-[10px] uppercase font-bold text-muted tracking-wider">
                   {t('mockup.preview_label')}:
                 </div>
-                <div className="p-3 rounded-2xl rounded-br-xs bg-blue-600/15 border border-blue-500/30 text-xs leading-relaxed text-foreground">
-                  {selectedNode.data.text ? (
+                {selectedNode.data.text ? (
+                  <div className="p-3 rounded-2xl rounded-br-xs bg-blue-600/15 border border-blue-500/30 text-xs leading-relaxed text-foreground">
                     <HighlightedText text={selectedNode.data.text} />
-                  ) : (
-                    <span className="text-muted italic">{t('common.add')}...</span>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-2xl rounded-br-xs bg-surface-secondary/40 border border-border/60 text-xs text-muted italic">
+                    {t('common.add')}...
+                  </div>
+                )}
               </div>
 
               {/* Keyboard Editor */}
@@ -327,7 +330,18 @@ export default function TelegramMockup({
                         : 'bg-accent text-accent-foreground rounded-br-xs font-medium'
                     }`}
                   >
-                    <div dangerouslySetInnerHTML={{ __html: msg.text }} />
+                    {msg.text && msg.text.trim() ? (
+                      <div dangerouslySetInnerHTML={{ __html: msg.text }} />
+                    ) : msg.media_type && msg.media_type !== 'text' && msg.media_url ? (
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[11px] text-muted">[{msg.media_type.toUpperCase()}]</span>
+                        <img
+                          src={msg.media_url}
+                          alt="media"
+                          className="max-h-40 rounded-xl object-cover"
+                        />
+                      </div>
+                    ) : null}
 
                     {/* Inline Buttons inside Simulated Message */}
                     {msg.reply_markup?.inline_keyboard && (

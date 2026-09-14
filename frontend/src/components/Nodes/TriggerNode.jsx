@@ -17,7 +17,7 @@ export default function TriggerNode({ id, data, selected, type }) {
 
   return (
     <div className={`min-w-[230px] rounded-xl border bg-surface shadow-lg transition-all ${selected ? 'border-emerald-500 ring-2 ring-emerald-500/40' : 'border-border hover:border-muted'}`}>
-      <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border bg-surface-secondary/50 rounded-t-xl">
+      <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border bg-surface-secondary/50 rounded-t-xl cursor-grab active:cursor-grabbing custom-drag-handle">
         <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-500">
           <Icon size={15} />
         </div>
@@ -27,7 +27,7 @@ export default function TriggerNode({ id, data, selected, type }) {
         </div>
       </div>
 
-      <div className="p-3 space-y-2">
+      <div className="p-3 space-y-2 nodrag nopan">
         {isCommand || isStart ? (
           <input type="text" value={cmd} onChange={e => update('command', e.target.value)}
             className="w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] font-mono text-foreground outline-none focus:border-emerald-500" />

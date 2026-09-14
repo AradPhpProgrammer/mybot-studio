@@ -15,6 +15,7 @@ import ConditionNode from '../Nodes/ConditionNode';
 import ActionNode from '../Nodes/ActionNode';
 import MathNode from '../Nodes/MathNode';
 import LoopNode from '../Nodes/LoopNode';
+import EditMessageNode from '../Nodes/EditMessageNode';
 import { useI18n } from '../../locales/i18n';
 
 export default function Canvas(props) {
@@ -50,7 +51,7 @@ function CanvasInner({
       trigger_callback: TriggerNode,
       trigger_message: TriggerNode,
       action_send_message: MessageNode,
-      action_edit_message: MessageNode,
+      action_edit_message: EditMessageNode,
       action_condition: ConditionNode,
       action_set_variable: ActionNode,
       action_loop: LoopNode,
@@ -158,12 +159,14 @@ function CanvasInner({
         onEdgeContextMenu={handleEdgeCtx}
         onPaneContextMenu={handlePaneCtx}
         nodeTypes={nodeTypes}
+        dragHandle=".custom-drag-handle"
         deleteKeyCode={['Backspace', 'Delete']}
         edgesFocusable
         nodesFocusable
         fitView
         snapToGrid
         snapGrid={[15, 15]}
+        onlyRenderVisibleElements
         className={isDark ? 'dark-canvas' : 'light-canvas'}
         minZoom={0.2}
         maxZoom={2.5}
@@ -175,9 +178,13 @@ function CanvasInner({
         />
         <Controls className="!bg-surface !border-border !rounded-xl !shadow-lg !overflow-hidden [&>button]:!bg-surface [&>button]:!border-border [&>button]:!text-foreground" />
         <MiniMap
-          className="!bg-surface/95 !border-border !rounded-xl !shadow-lg !overflow-hidden"
+          position="top-left"
+          className={`!bg-surface !border-border !rounded-xl !shadow-lg !overflow-hidden ${isDark ? '!bg-[#151b2d]' : ''}`}
           nodeColor={() => (isDark ? '#475569' : '#cbd5e1')}
-          maskColor={isDark ? 'rgba(10,15,24,0.8)' : 'rgba(255,255,255,0.8)'}
+          maskColor={isDark ? 'rgba(10,15,24,0.85)' : 'rgba(255,255,255,0.85)'}
+          style={{ zIndex: 5 }}
+          pannable={false}
+          zoomable={false}
         />
       </ReactFlow>
 

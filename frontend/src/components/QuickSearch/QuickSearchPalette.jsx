@@ -6,6 +6,7 @@ import {
   MousePointerClick,
   MessageSquare,
   Send,
+  Edit3,
   GitBranch,
   Database,
   Clock,
@@ -76,6 +77,15 @@ const NODE_DEFINITIONS = [
       buttons: [],
       keyboard_type: 'inline'
     }
+  },
+  {
+    type: 'action_edit_message',
+    category: 'messages',
+    title: 'Edit Message',
+    desc: 'Updates an earlier sent message when a button is tapped.',
+    icon: Edit3,
+    color: 'text-orange-500',
+    data: { text: '', buttons: [] }
   },
   {
     type: 'action_answer_callback',

@@ -149,7 +149,12 @@
     },
     "action_edit_message": {
       "name": "Edit Message",
-      "desc": "Updates previous message content on callback."
+      "desc": "Updates previous message content on callback.",
+      "category": "Message",
+      "text_placeholder": "New message text (type $ for variables)",
+      "connected": "Will edit the message sent by the connected node above.",
+      "not_connected": "Connect this node after a Send Message node to edit that message. Without text it will warn the user.",
+      "buttons_count": "Buttons: "
     },
     "action_answer_callback": {
       "name": "Answer Callback (Alert)",

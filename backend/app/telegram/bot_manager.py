@@ -275,5 +275,37 @@ class BotManager:
                 except Exception:
                     pass
 
+    async def refresh_bot_info(self, bot_id: int, db: aiosqlite.Connection) -> Dict[str, Any]:
+        """Queries BotFather / Telegram API to sync name and username if changed by user."""
+        cursor = await db.execute("SELECT token, settings FROM bots WHERE id = ?", (bot_id,))
+        row = await cursor.fetchone()
+        if not row:
+            raise ValueError("Bot not found")
+
+        settings_dict = json.loads(row["settings"]) if row["settings"] else {}
+        verif = await self.verify_token(
+            row["token"],
+            settings_dict.get("cf_worker_url"),
+            settings_dict.get("custom_proxy")
+        )
+
+        new_name = verif.get("first_name")
+        new_username = verif.get("username")
+
+        if new_name and new_username:
+            await db.execute(
+                "UPDATE bots SET name = ?, username = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (new_name, new_username, bot_id)
+            )
+            await db.commit()
+
+        return {
+            "id": bot_id,
+            "name": new_name,
+            "username": new_username,
+            "is_online_verified": verif.get("is_online_verified", False),
+            "network_warning": verif.get("network_warning")
+        }
+
 
 bot_manager = BotManager()

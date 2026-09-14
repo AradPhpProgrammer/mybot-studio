@@ -1,7 +1,7 @@
 import React from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Send, Image, Video, Mic, FileText } from 'lucide-react';
-import VariableTextArea, { HighlightedText } from '../Variables/VariableTextArea';
+import VariableTextArea from '../Variables/VariableTextArea';
 
 const MEDIA_ICONS = { text: Send, photo: Image, video: Video, voice: Mic, document: FileText };
 const MEDIA_TYPES = ['text', 'photo', 'video', 'voice', 'document'];
@@ -20,7 +20,7 @@ export default function MessageNode({ id, data, selected }) {
     <div className={`min-w-[300px] rounded-xl border bg-surface shadow-lg transition-all ${selected ? 'border-blue-500 ring-2 ring-blue-500/40' : 'border-border hover:border-muted'}`}>
       <Handle type="target" position={Position.Left} id="exec" className="!w-3 !h-3 !bg-blue-500 !border-2 !border-surface cursor-crosshair" />
 
-      <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border bg-surface-secondary/50 rounded-t-xl">
+      <div className="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border bg-surface-secondary/50 rounded-t-xl cursor-grab active:cursor-grabbing custom-drag-handle">
         <div className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-500">
           <Icon size={15} />
         </div>
@@ -36,7 +36,7 @@ export default function MessageNode({ id, data, selected }) {
         </select>
       </div>
 
-      <div className="p-3 space-y-2">
+      <div className="p-3 space-y-2 nodrag nopan">
         {/* Media type dropdown */}
         <select value={mediaType} onChange={e => update('media_type', e.target.value)}
           className="w-full px-2 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] text-foreground outline-none focus:border-blue-500">
@@ -45,12 +45,6 @@ export default function MessageNode({ id, data, selected }) {
 
         <VariableTextArea value={data.text || ''} onChange={(v) => update('text', v)} rows={2} placeholder="Message text / caption (type $ for variables)" className="w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] text-foreground leading-relaxed outline-none focus:border-blue-500 resize-none" />
 
-        {data.text && data.text.includes('$') && (
-          <div className="px-2.5 py-1.5 rounded-lg bg-surface-tertiary/60 border border-orange-500/20 text-[11px] text-foreground">
-            <HighlightedText text={data.text} />
-          </div>
-        )}
-
         {mediaType !== 'text' && (
           <input type="text" value={data.media_url || ''} onChange={e => update('media_url', e.target.value)} placeholder="https://... or file_id"
             className="w-full px-2.5 py-1.5 rounded-lg bg-surface-tertiary border border-border text-[11px] font-mono text-foreground outline-none focus:border-blue-500" />
@@ -58,7 +52,7 @@ export default function MessageNode({ id, data, selected }) {
 
         {/* Buttons preview */}
         {buttons.length > 0 && (
-          <div className="space-y-1 pt-1 border-t border-border">
+          <div className="space-y-1 pt-1 border-t border-border nodrag nopan">
             {buttons.map((row, rIdx) => (
               <div key={rIdx} className="flex gap-1">
                 {row.map((btn, bIdx) => {

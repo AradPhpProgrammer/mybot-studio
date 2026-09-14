@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, ArrowRight, Trash2, Loader2, AlertTriangle, Bot, CheckCircle2 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Plus, ArrowRight, Trash2, Loader2, RefreshCw, AlertTriangle, Bot, CheckCircle2, Upload } from 'lucide-react';
 import { useI18n } from '../../locales/i18n';
 import { api } from '../../services/api';
 import NanoGridCanvas from '../Visuals/NanoGridCanvas';
@@ -8,7 +8,9 @@ export default function BotsList({
   bots,
   onSelectBot,
   onBotCreated,
-  onDeleteBot
+  onDeleteBot,
+  onRefreshBot,
+  onUploadAvatar
 }) {
   const { t, dir } = useI18n();
   const [modalOpen, setModalOpen] = useState(false);
@@ -17,6 +19,9 @@ export default function BotsList({
   const [verifiedBot, setVerifiedBot] = useState(null);
   const [warningMessage, setWarningMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [refreshingId, setRefreshingId] = useState(null);
+  const [uploadingId, setUploadingId] = useState(null);
+  const fileInputRef = useRef(null);
 
   const handleVerifyAndCreate = async (e) => {
     e.preventDefault();
@@ -45,6 +50,29 @@ export default function BotsList({
     setTokenInput('');
     setWarningMessage('');
     onSelectBot(bot);
+  };
+
+  const handleRefresh = async (e, bot) => {
+    e.stopPropagation();
+    setRefreshingId(bot.id);
+    try {
+      await onRefreshBot(bot);
+    } finally {
+      setRefreshingId(null);
+    }
+  };
+
+  const handleFileChange = async (e, bot) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !onUploadAvatar) return;
+    e.stopPropagation();
+    setUploadingId(bot.id);
+    try {
+      await onUploadAvatar(bot, file);
+    } finally {
+      setUploadingId(null);
+    }
   };
 
   return (
@@ -105,21 +133,61 @@ export default function BotsList({
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-2xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-500 font-bold shadow-inner">
-                        <Bot size={22} />
+                      <div className="relative w-14 h-14 shrink-0">
+                        {bot.photo_url ? (
+                          <img
+                            src={bot.photo_url}
+                            alt={bot.name}
+                            className="w-full h-full rounded-full object-cover border border-border shadow-inner cursor-pointer"
+                            onClick={(e) => { e.stopPropagation(); document.getElementById(`avatar-input-${bot.id}`)?.click(); }}
+                            title={t('dashboard.upload_photo') || 'Change Photo'}
+                          />
+                        ) : (
+                          <label
+                            htmlFor={`avatar-input-${bot.id}`}
+                            className="w-14 h-14 rounded-full border-2 border-dashed border-border bg-surface-secondary/60 flex items-center justify-center text-muted group-hover:border-accent/60 group-hover:text-accent transition-colors cursor-pointer"
+                            title={t('dashboard.upload_photo') || 'Upload Photo'}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {uploadingId === bot.id ? (
+                              <Loader2 size={16} className="animate-spin text-accent" />
+                            ) : (
+                              <div className="w-5 h-5 border-2 border-current rounded-sm flex items-center justify-center">
+                                <Upload size={11} />
+                              </div>
+                            )}
+                          </label>
+                        )}
+                        <input
+                          id={`avatar-input-${bot.id}`}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleFileChange(e, bot)}
+                        />
                       </div>
                       <div>
                         <div className="text-sm font-bold text-foreground">{bot.name}</div>
                         <div className="text-xs text-muted font-mono">@{bot.username}</div>
                       </div>
                     </div>
-                    <button
-                      onClick={() => onDeleteBot(bot.id)}
-                      className="p-2 rounded-lg text-muted hover:text-danger hover:bg-danger/10 transition-colors opacity-0 group-hover:opacity-100"
-                      title={t('common.delete')}
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => handleRefresh(e, bot)}
+                        disabled={refreshingId === bot.id}
+                        className="p-2 rounded-lg text-muted hover:text-accent hover:bg-accent/10 transition-colors disabled:opacity-50"
+                        title={t('dashboard.refresh_bot')}
+                      >
+                        {refreshingId === bot.id ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onDeleteBot(bot.id); }}
+                        className="p-2 rounded-lg text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+                        title={t('common.delete')}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between pt-3 border-t border-border/40 text-[11px] text-muted font-mono">
