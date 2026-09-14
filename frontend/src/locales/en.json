@@ -179,9 +179,13 @@
       "desc": "Stores dynamic user state in database."
     },
     "math_add": {
-      "name": "Math: Add (+)",
-      "desc": "Adds Input A and Input B, writes result to Output Variable."
-    },
+          "name": "Math: Add (+)",
+          "desc": "Adds Input A and Input B, writes result to Output Variable."
+        },
+        "math": {
+          "name": "Math Calculation (A ⊕ B)",
+          "desc": "Calculates Input A ⊕ Input B with +, -, ×, or ÷ and writes result to Output Variable."
+        },
     "math_subtract": {
       "name": "Math: Subtract (-)",
       "desc": "Subtracts Input B from Input A, writes result to Output Variable."
@@ -253,6 +257,14 @@
     "send": "Send",
     "clear_chat": "Clear Chat",
     "typing": "Typing...",
+    "uploading_photo": "Sending photo...",
+    "uploading_video": "Sending video...",
+    "bot_commands": "Bot Commands",
+    "reply_keyboard": "Reply Keyboard",
+    "buttons_available": "available",
+    "no_reply_buttons": "No reply keyboard buttons yet. Click + to add your first button.",
+    "add_first_button": "Click to Add First Button (Full Width)",
+    "open_reply_keyboard": "Open Keyboard Builder",
     "preview_label": "Preview in Telegram chat",
     "no_node_selected": "No message node selected",
     "no_node_selected_desc": "To edit text and buttons in the preview, click a Send Message node on the canvas.",
@@ -315,8 +327,34 @@
     "flow_transfer": "Template Builder (Export / Import)",
         "flow_transfer_desc": "Build a reusable flow template and export it to JSON, or import an existing template.",
     "cf_worker": "Cloudflare Worker Reverse Proxy URL",
-        "custom_proxy": "HTTP / SOCKS5 Proxy"
-      },
+    "custom_proxy": "HTTP / SOCKS5 Proxy",
+    "tracked_fields": {
+      "db_title": "Isolated Database & Tracked Fields",
+      "db_desc": "Each bot has its own SQLite file. Only checked fields are saved to keep the database fast and clean.",
+      "subscribers": "subscriber(s)",
+      "required": "required",
+      "profile_photo_title": "Bot Profile Photo",
+      "profile_photo_upload": "Upload Profile Photo",
+      "profile_photo_desc": "Click the circle to upload a custom avatar for this bot.",
+      "description_label": "What can this bot do? (Description)",
+      "description_placeholder": "Shown on the empty chat screen before user presses /start",
+      "fields": {
+        "telegram_id": "Numeric Telegram ID",
+        "chat_id": "Chat ID",
+        "first_name": "First Name",
+        "start_date": "First Start Date",
+        "username": "Telegram @Username",
+        "last_name": "Last Name",
+        "language_code": "Language Code",
+        "balance": "User Balance / Credits",
+        "ref_code": "Referral / Deep-Link Code",
+        "inviter_id": "Inviter Telegram ID",
+        "last_seen": "Last Activity Date",
+        "total_starts": "Total Starts Count",
+        "custom_variables": "Flow Set-Variables (NoSQL)"
+      }
+    }
+  },
       "variables": {
         "first_name": "User's first name",
         "last_name": "User's last name (optional)",

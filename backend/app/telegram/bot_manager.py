@@ -275,6 +275,41 @@ class BotManager:
                 except Exception:
                     pass
 
+    async def sync_bot_presence(
+        self, token: str, settings_dict: dict,
+        name: Optional[str] = None, bio: Optional[str] = None,
+        description: Optional[str] = None
+    ) -> Dict[str, bool]:
+        """
+        Pushes bot display name / bio / description to Telegram via Bot API
+        (setMyName, setMyShortDescription, setMyDescription). Returns per-field success flags.
+        """
+        result = {"name": False, "bio": False, "description": False}
+        if not token:
+            return result
+        session = self.get_api_session(settings_dict.get("cf_worker_url"), settings_dict.get("custom_proxy"))
+        bot = Bot(token=token, session=session)
+        try:
+            if name:
+                await bot.set_my_name(name=name)
+                result["name"] = True
+            # bio -> short description (shown on the empty chat sticker preview)
+            if bio is not None:
+                await bot.set_my_short_description(short_description=bio or "")
+                result["bio"] = True
+            # description -> the "What can this bot do?" long description box
+            if description is not None:
+                await bot.set_my_description(description=description or "")
+                result["description"] = True
+        except Exception as e:
+            logger.warning(f"Could not sync bot presence to Telegram: {e}")
+        finally:
+            try:
+                await bot.session.close()
+            except Exception:
+                pass
+        return result
+
     async def refresh_bot_info(self, bot_id: int, db: aiosqlite.Connection) -> Dict[str, Any]:
         """Queries BotFather / Telegram API to sync name and username if changed by user."""
         cursor = await db.execute("SELECT token, settings FROM bots WHERE id = ?", (bot_id,))

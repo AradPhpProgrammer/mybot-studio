@@ -94,6 +94,22 @@ async def update_bot_settings(bot_id: int, req: BotSettingsUpdate, db: aiosqlite
         (new_name, new_active, json.dumps(current), bot_id)
     )
     await db.commit()
+
+    # Sync name, bio, and description to Telegram Bot API in background / inline
+    try:
+        cur_token = await db.execute("SELECT token FROM bots WHERE id = ?", (bot_id,))
+        t_row = await cur_token.fetchone()
+        if t_row and t_row["token"]:
+            await bot_manager.sync_bot_presence(
+                token=t_row["token"],
+                settings_dict=current,
+                name=name_val,
+                bio=update_data.get("bio"),
+                description=update_data.get("description")
+            )
+    except Exception as e:
+        logger.warning(f"Could not push presence to Telegram: {e}")
+
     return {"success": True, "name": new_name, "is_active": bool(new_active), "settings": current}
 
 @router.post("/{bot_id}/toggle-active")

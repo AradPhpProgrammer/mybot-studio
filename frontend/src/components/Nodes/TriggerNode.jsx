@@ -12,7 +12,7 @@ const ICON_MAP = {
 };
 
 export default function TriggerNode({ id, data, selected, type }) {
-  const { setNodes } = useReactFlow();
+  const { setNodes, getNodes } = useReactFlow();
   const Icon = ICON_MAP[type] || Play;
   const isStart = type === 'trigger_start';
   const isCommand = type === 'trigger_command';
@@ -22,7 +22,33 @@ export default function TriggerNode({ id, data, selected, type }) {
   const nodeId = id || data?.id;
   const update = (field, value) => setNodes(nds => nds.map(n => n.id === nodeId ? { ...n, data: { ...n.data, [field]: value } } : n));
 
-  const cmd = isCommand ? (data.command || '') : (isStart ? '/start' : (data.callback_data || 'btn_action'));
+  const cmd = isCommand
+    ? (data.command ?? '')
+    : isStart
+    ? '/start'
+    : (data.callback_data ?? '');
+
+  // Live crawl all nodes on the canvas to harvest any button/callback identifiers
+  const suggestions = React.useMemo(() => {
+    try {
+      const allNodes = getNodes ? getNodes() : [];
+      const ids = new Set();
+      allNodes.forEach((n) => {
+        const btns = n?.data?.buttons;
+        if (Array.isArray(btns)) {
+          btns.forEach((row) => {
+            (row || []).forEach((b) => {
+              if (b?.callback_data) ids.add(b.callback_data);
+            });
+          });
+        }
+        if (n?.data?.callback_data && n.id !== nodeId) ids.add(n.data.callback_data);
+      });
+      return Array.from(ids);
+    } catch {
+      return [];
+    }
+  }, [getNodes, nodeId]);
 
   // Theme color based on trigger type:
   // - Inline button event -> Blue
@@ -78,6 +104,7 @@ export default function TriggerNode({ id, data, selected, type }) {
           <CallbackAutocomplete
             value={cmd}
             onChange={(v) => update('callback_data', v)}
+            aside={{ suggestions }}
             placeholder={isKeyboard ? "Keyboard identifier (e.g. btn_menu)" : "Inline identifier (e.g. btn_about)"}
             className={`w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] font-mono text-foreground outline-none ${colorTheme.focus}`}
           />

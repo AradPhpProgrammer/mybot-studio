@@ -15,6 +15,23 @@ MyBot Studio provides an offline-first, node-based workspace designed for deploy
 
 ---
 
+## Features
+
+- **Visual no-code DAG builder** via ReactFlow — triggers (commands, inline callbacks, reply keyboards), actions (send/edit message, HTTP request, math, condition branch, loop, set-variable, delay, answer-callback) all wired by drag & drop.
+- **Native colored Telegram buttons** — `primary` (blue), `success` (green), `danger` (red) via the official Bot API `style` field on both inline and reply keyboards (no emoji hacks).
+- **Rich Message support** — the backend emits Telegram Rich Messages (`<tg-button-row>` / `<tg-button>`) so messages render as modern rich content.
+- **Interactive Telegram-like reply keyboard builder** with drag & drop, per-button identifier/color selection, and full-width first button.
+- **Live simulator & preview** — a draggable, resizable Telegram mockup shows the exact chat UI; rich-text toolbar (bold/italic/code), table insertion, and selection-based formatting wrap only your selected text.
+- **Isolated per-bot SQLite database** with configurable tracked user fields.
+- **Bot presence sync** — push name, bio (short description), and description to Telegram via `setMyName` / `setMyShortDescription` / `setMyDescription`, plus auto-register slash commands with `setMyCommands`.
+- **Dynamic identifiers** — keyboard/button identifiers and callback suggestions are crawled from your flow, never hardcoded.
+- **Edit Message node** — truly edits the previously sent/connected message (or the tapped callback message) via `editMessageText` instead of sending a new one.
+- **Unsaved-changes guard** (beforeunload warning) and **undo/redo** with Ctrl+Z / Ctrl+Y.
+- **Localized i18n** (EN / FA / AR / RU) — the entire UI and bot settings read from JSON translation files.
+- **Math node consolidation** — a single Math node with `+ - × ÷` operator dropdown (backward compatible with legacy add/sub/mul/div node types).
+
+---
+
 ## Installation
 
 ### Automated Production Deployment (Linux / VPS)

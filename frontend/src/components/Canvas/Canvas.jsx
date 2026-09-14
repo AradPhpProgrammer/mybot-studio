@@ -57,6 +57,7 @@ function CanvasInner({
       action_condition: ConditionNode,
       action_set_variable: ActionNode,
       action_loop: LoopNode,
+      math: MathNode,
       math_add: MathNode,
       math_subtract: MathNode,
       math_multiply: MathNode,

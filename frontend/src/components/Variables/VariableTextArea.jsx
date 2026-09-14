@@ -64,7 +64,7 @@ export function renderHighlighted(text) {
  * mouse click + hover glow, dark-mode safe, and blocks canvas pan/zoom
  * while typing. Typing "$..." inserts "$first_name" etc.
  */
-export default function VariableTextArea({ value, onChange, placeholder, className, rows, onEnter }) {
+export default function VariableTextArea({ value, onChange, placeholder, className, rows, onEnter, onSelect }) {
   const { lang } = useI18n();
   const taRef = useRef(null);
   const [open, setOpen] = useState(false);
@@ -183,7 +183,14 @@ export default function VariableTextArea({ value, onChange, placeholder, classNa
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        onKeyUp={(e) => e.stopPropagation()}
+        onSelect={onSelect}
+        onKeyUp={(e) => {
+          e.stopPropagation();
+          onSelect?.(e);
+        }}
+        onMouseUp={(e) => {
+          onSelect?.(e);
+        }}
         onWheel={(e) => e.stopPropagation()}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         placeholder={placeholder}

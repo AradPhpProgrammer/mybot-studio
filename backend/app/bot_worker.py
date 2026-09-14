@@ -1,32 +1,105 @@
 import asyncio
-import json
 import logging
-import signal
-import sys
 import aiosqlite
 from aiogram import Bot, Dispatcher, types
 from aiogram.enums import ParseMode
+from aiogram.exceptions import TelegramAPIError
 
 from app.config import settings
-from app.database import init_db
 from app.engine.dag_runner import DAGRunner
 from app.telegram.bot_manager import bot_manager
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] [BotWorker] %(message)s")
-logger = logging.getLogger("BotWorker")
+logger = logging.getLogger(__name__)
 
-active_tasks: dict = {}
-is_running = True
+# Track active long-polling tasks by bot_id
+ACTIVE_WORKERS = {}
+
 RETRY_DELAY_BASE = 5  # seconds
 MAX_RETRY_DELAY = 60  # max 1 minute between retries
 
-async def run_bot_polling(bot_id: int, token: str, settings_dict: dict):
+
+def build_telegram_inline_keyboard(markup: dict):
+    """
+    Builds official InlineKeyboardMarkup with native Bot API button styles:
+    - primary (blue)
+    - success (green)
+    - danger (red)
+    - default/none (omitted -> native client theme)
+    """
+    if not markup or "inline_keyboard" not in markup:
+        return None
+
+    rows = []
+    for row in markup["inline_keyboard"]:
+        row_btns = []
+        for b in row:
+            btn_kwargs = {
+                "text": b.get("text", "Button"),
+                "callback_data": b.get("callback_data"),
+                "url": b.get("url")
+            }
+            # Official Telegram Bot API semantic style
+            style = b.get("style")
+            if style in ("primary", "success", "danger"):
+                btn_kwargs["style"] = style
+
+            row_btns.append(types.InlineKeyboardButton(**btn_kwargs))
+        rows.append(row_btns)
+
+    return types.InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def build_telegram_reply_keyboard(markup: dict):
+    """
+    Builds official ReplyKeyboardMarkup with native styles.
+    """
+    if not markup:
+        return None
+
+    # Check for reply keyboard structure
+    reply_rows = markup.get("keyboard")
+    if not reply_rows and markup.get("keyboard_type") == "reply":
+        reply_rows = markup.get("buttons")
+
+    if not reply_rows:
+        return None
+
+    rows = []
+    for row in reply_rows:
+        row_btns = []
+        for b in row:
+            btn_kwargs = {"text": b.get("text", "Button")}
+            style = b.get("style")
+            if style in ("primary", "success", "danger"):
+                btn_kwargs["style"] = style
+            row_btns.append(types.KeyboardButton(**btn_kwargs))
+        rows.append(row_btns)
+
+    return types.ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
+
+
+def build_keyboard_markup(markup: dict):
+    """Detects whether markup is inline or reply keyboard and builds accordingly."""
+    if not markup:
+        return None
+    if "inline_keyboard" in markup or markup.get("keyboard_type") == "inline":
+        return build_telegram_inline_keyboard(markup)
+    if "keyboard" in markup or markup.get("keyboard_type") == "reply":
+        return build_telegram_reply_keyboard(markup)
+    # Default fallback
+    return build_telegram_inline_keyboard(markup)
+
+
+async def run_bot_worker(bot_id: int, token: str, settings_dict: dict):
     """Runs long polling loop for a specific bot with exponential backoff on failure."""
     session = bot_manager.get_api_session(
         settings_dict.get("cf_worker_url"), settings_dict.get("custom_proxy")
     )
     bot = Bot(token=token, session=session)
     dp = Dispatcher()
+
+    # Track last sent message ID per chat to enable action_edit_message on standard flows
+    last_sent_messages = {}
 
     @dp.message()
     async def on_message(message: types.Message):
@@ -48,6 +121,7 @@ async def run_bot_polling(bot_id: int, token: str, settings_dict: dict):
                 bot_client=bot,
                 chat_id=message.chat.id
             )
+
             for m in res.get("messages", []):
                 text = m.get("text", "")
                 markup = m.get("reply_markup")
@@ -55,48 +129,65 @@ async def run_bot_polling(bot_id: int, token: str, settings_dict: dict):
                 murl = m.get("media_url", "")
                 is_edit = m.get("is_edit", False)
 
-                reply_markup = None
-                if markup and "inline_keyboard" in markup:
-                    reply_markup = types.InlineKeyboardMarkup(
-                        inline_keyboard=[
-                            [
-                                types.InlineKeyboardButton(
-                                    text=b["text"],
-                                    callback_data=b.get("callback_data"),
-                                    url=b.get("url")
-                                )
-                                for b in row
-                            ]
-                            for row in markup["inline_keyboard"]
-                        ]
-                    )
+                reply_markup = build_keyboard_markup(markup)
 
                 if is_edit:
-                    if text:
-                        # Edit the triggering message itself (callback message)
-                        if message.reply_to_message and message.reply_to_message.message_id:
+                    target_msg_id = last_sent_messages.get(message.chat.id)
+                    if not target_msg_id and message.reply_to_message:
+                        target_msg_id = message.reply_to_message.message_id
+
+                    if target_msg_id and text:
+                        try:
                             await bot.edit_message_text(
                                 chat_id=message.chat.id,
-                                message_id=message.reply_to_message.message_id,
-                                text=text, parse_mode=ParseMode.HTML, reply_markup=reply_markup
+                                message_id=target_msg_id,
+                                text=text,
+                                parse_mode=ParseMode.HTML,
+                                reply_markup=reply_markup
                             )
-                        else:
-                            await bot.send_message(chat_id=message.chat.id, text=text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
-                    else:
-                        # No text to edit -> warn the user
-                        await bot.send_message(
+                            continue
+                        except Exception as edit_err:
+                            logger.warning(f"Could not edit message {target_msg_id}: {edit_err}. Falling back to send.")
+
+                    # If edit was not possible, send new message and record ID
+                    if text:
+                        sent = await bot.send_message(
                             chat_id=message.chat.id,
-                            text="⚠️ This flow tried to edit a message, but no text was provided.",
-                            parse_mode=ParseMode.HTML
+                            text=text,
+                            parse_mode=ParseMode.HTML,
+                            reply_markup=reply_markup
                         )
+                        last_sent_messages[message.chat.id] = sent.message_id
                     continue
 
-                if mtype == "text":
-                    await bot.send_message(chat_id=message.chat.id, text=text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
+                # Standard sending
+                sent_msg = None
+                if mtype == "text" and text:
+                    sent_msg = await bot.send_message(
+                        chat_id=message.chat.id,
+                        text=text,
+                        parse_mode=ParseMode.HTML,
+                        reply_markup=reply_markup
+                    )
                 elif mtype == "photo" and murl:
-                    await bot.send_photo(chat_id=message.chat.id, photo=murl, caption=text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
+                    sent_msg = await bot.send_photo(
+                        chat_id=message.chat.id,
+                        photo=murl,
+                        caption=text,
+                        parse_mode=ParseMode.HTML,
+                        reply_markup=reply_markup
+                    )
                 elif mtype == "video" and murl:
-                    await bot.send_video(chat_id=message.chat.id, video=murl, caption=text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
+                    sent_msg = await bot.send_video(
+                        chat_id=message.chat.id,
+                        video=murl,
+                        caption=text,
+                        parse_mode=ParseMode.HTML,
+                        reply_markup=reply_markup
+                    )
+
+                if sent_msg:
+                    last_sent_messages[message.chat.id] = sent_msg.message_id
 
     @dp.callback_query()
     async def on_callback(callback: types.CallbackQuery):
@@ -110,123 +201,127 @@ async def run_bot_polling(bot_id: int, token: str, settings_dict: dict):
                 "last_name": callback.from_user.last_name or "",
                 "language_code": callback.from_user.language_code or "fa"
             }
-            chat_id = callback.message.chat.id if callback.message else callback.from_user.id
             res = await runner.execute_flow(
                 event_type="callback",
                 payload=callback.data or "",
                 user_info=user_info,
                 bot_client=bot,
-                chat_id=chat_id
+                chat_id=callback.message.chat.id if callback.message else 0
             )
+
+            # 1. Answer callback if alerts/toasts were returned
+            answered = False
+            for al in res.get("alerts", []):
+                await callback.answer(text=al.get("text", ""), show_alert=al.get("show_alert", False))
+                answered = True
+
+            if not answered:
+                try:
+                    await callback.answer()
+                except Exception:
+                    pass
+
+            # 2. Process messages (edit or send)
             for m in res.get("messages", []):
                 text = m.get("text", "")
                 markup = m.get("reply_markup")
+                mtype = m.get("media_type", "text")
+                murl = m.get("media_url", "")
                 is_edit = m.get("is_edit", False)
-                reply_markup = None
-                if markup and "inline_keyboard" in markup:
-                    reply_markup = types.InlineKeyboardMarkup(
-                        inline_keyboard=[
-                            [
-                                types.InlineKeyboardButton(
-                                    text=b["text"],
-                                    callback_data=b.get("callback_data"),
-                                    url=b.get("url")
-                                )
-                                for b in row
-                            ]
-                            for row in markup["inline_keyboard"]
-                        ]
-                    )
+
+                reply_markup = build_keyboard_markup(markup)
 
                 if is_edit:
+                    # Target is the message where the inline button was clicked
                     if text and callback.message and callback.message.message_id:
-                        # Edit the message that carried the tapped button
-                        await bot.edit_message_text(
-                            chat_id=chat_id,
-                            message_id=callback.message.message_id,
+                        try:
+                            await bot.edit_message_text(
+                                chat_id=callback.message.chat.id,
+                                message_id=callback.message.message_id,
+                                text=text,
+                                parse_mode=ParseMode.HTML,
+                                reply_markup=reply_markup
+                            )
+                            last_sent_messages[callback.message.chat.id] = callback.message.message_id
+                            continue
+                        except Exception as err:
+                            logger.warning(f"Error editing callback message: {err}")
+
+                    # Fallback to sending new message if edit fails
+                    if text and callback.message:
+                        sent = await bot.send_message(
+                            chat_id=callback.message.chat.id,
                             text=text,
                             parse_mode=ParseMode.HTML,
                             reply_markup=reply_markup
                         )
-                    elif text:
-                        await bot.send_message(chat_id=chat_id, text=text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
-                    else:
-                        # No text -> warn the user
-                        await bot.send_message(
-                            chat_id=chat_id,
-                            text="⚠️ This flow tried to edit a message, but no text was provided.",
-                            parse_mode=ParseMode.HTML
-                        )
+                        last_sent_messages[callback.message.chat.id] = sent.message_id
                     continue
 
-                await bot.send_message(chat_id=chat_id, text=text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
+                if callback.message:
+                    sent_msg = None
+                    if mtype == "text" and text:
+                        sent_msg = await bot.send_message(
+                            chat_id=callback.message.chat.id,
+                            text=text,
+                            parse_mode=ParseMode.HTML,
+                            reply_markup=reply_markup
+                        )
+                    elif mtype == "photo" and murl:
+                        sent_msg = await bot.send_photo(
+                            chat_id=callback.message.chat.id,
+                            photo=murl,
+                            caption=text,
+                            parse_mode=ParseMode.HTML,
+                            reply_markup=reply_markup
+                        )
+                    elif mtype == "video" and murl:
+                        sent_msg = await bot.send_video(
+                            chat_id=callback.message.chat.id,
+                            video=murl,
+                            caption=text,
+                            parse_mode=ParseMode.HTML,
+                            reply_markup=reply_markup
+                        )
 
-            alerts = res.get("alerts", [])
-            alert_text = alerts[0]["text"] if alerts else None
-            show_alert = alerts[0].get("show_alert", False) if alerts else False
-            await callback.answer(text=alert_text, show_alert=show_alert)
+                    if sent_msg:
+                        last_sent_messages[callback.message.chat.id] = sent_msg.message_id
 
-    try:
-        logger.info(f"Bot #{bot_id} polling started.")
-        await dp.start_polling(bot)
-    except Exception as e:
-        err_str = str(e)
-        logger.error(f"Bot #{bot_id} encountered polling error: {err_str[:200]}")
-    finally:
+    # Start Polling with auto-recovery
+    delay = RETRY_DELAY_BASE
+    while True:
         try:
+            logger.info(f"Starting long polling for bot {bot_id}...")
+            await dp.start_polling(bot, handle_signals=False)
+            break
+        except asyncio.CancelledError:
+            logger.info(f"Polling task for bot {bot_id} cancelled.")
             await bot.session.close()
-        except Exception:
-            pass
-
-async def supervisor_loop():
-    """Supervises all active bots from the shared SQLite DB with exponential backoff on errors."""
-    await init_db()
-    logger.info("Supervisor loop initiated. Zero-downtime bot engine is online.")
-    last_error_time = 0
-    
-    while is_running:
-        try:
-            async with aiosqlite.connect(settings.DATABASE_PATH) as db:
-                db.row_factory = aiosqlite.Row
-                cursor = await db.execute("SELECT id, token, settings FROM bots WHERE is_active = 1")
-                bots = await cursor.fetchall()
-
-                current_ids = set()
-                for b in bots:
-                    bid = b["id"]
-                    current_ids.add(bid)
-                    if bid not in active_tasks or active_tasks[bid].done():
-                        st = json.loads(b["settings"]) if b["settings"] else {}
-                        task = asyncio.create_task(run_bot_polling(bid, b["token"], st))
-                        active_tasks[bid] = task
-
-                for existing_id in list(active_tasks.keys()):
-                    if existing_id not in current_ids:
-                        active_tasks[existing_id].cancel()
-                        try:
-                            await active_tasks[existing_id]
-                        except asyncio.CancelledError:
-                            pass
-                        del active_tasks[existing_id]
-
+            break
+        except TelegramAPIError as api_err:
+            logger.error(f"Telegram API error for bot {bot_id}: {api_err}. Retrying in {delay}s...")
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, MAX_RETRY_DELAY)
         except Exception as e:
-            now = asyncio.get_event_loop().time()
-            if now - last_error_time > 30:  # Log at most once per 30s
-                logger.error(f"Supervisor loop error: {e}")
-                last_error_time = now
+            logger.error(f"Unexpected error in polling for bot {bot_id}: {e}. Retrying in {delay}s...")
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, MAX_RETRY_DELAY)
 
-        # Exponential backoff: sleep between 5s and 60s based on errors
-        await asyncio.sleep(RETRY_DELAY_BASE)
 
-def handle_sigterm(sig, frame):
-    global is_running
-    is_running = False
-    logger.info("Received termination signal. Gracefully stopping bots...")
-    for task in active_tasks.values():
-        task.cancel()
-    sys.exit(0)
+def start_bot_worker(bot_id: int, token: str, settings_dict: dict):
+    """Spawns an async polling task for a bot and registers it."""
+    stop_bot_worker(bot_id)
+    loop = asyncio.get_event_loop()
+    task = loop.create_task(run_bot_worker(bot_id, token, settings_dict))
+    ACTIVE_WORKERS[bot_id] = task
+    logger.info(f"Worker task registered for bot {bot_id}.")
+    return task
 
-if __name__ == "__main__":
-    signal.signal(signal.SIGINT, handle_sigterm)
-    signal.signal(signal.SIGTERM, handle_sigterm)
-    asyncio.run(supervisor_loop())
+
+def stop_bot_worker(bot_id: int):
+    """Cancels and cleans up a bot polling task if running."""
+    if bot_id in ACTIVE_WORKERS:
+        task = ACTIVE_WORKERS.pop(bot_id)
+        if not task.done():
+            task.cancel()
+        logger.info(f"Worker task stopped for bot {bot_id}.")

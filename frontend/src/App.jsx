@@ -302,7 +302,20 @@ export default function App() {
     setIsDirty(true);
   };
 
-  // Keyboard Shortcuts (Ctrl+S for save, Ctrl+N & Space for quick search / add node)
+  // Prevent closing / reloading if there are unsaved flow changes
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved flow changes.';
+        return e.returnValue;
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
+  // Keyboard Shortcuts (Ctrl+S for save, Ctrl+Shift+N for quick search, Ctrl+Z/Y for undo/redo)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -327,7 +340,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [view, nodes, edges, currentBot]);
+  }, [view, nodes, edges, currentBot, isDirty]);
 
   const handlePaneContextMenu = (e) => {
     // e may be either a native event or a plain {x,y} point from Canvas

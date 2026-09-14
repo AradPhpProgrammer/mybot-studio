@@ -90,9 +90,9 @@ export default function ActionNode({ id, data, selected, type }) {
           <>
             <input type="text" value={data.text || ''} onChange={e => update('text', e.target.value)} placeholder="Alert text"
               className="w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] text-foreground outline-none focus:border-blue-500" />
-            <label className="flex items-center gap-2 text-[11px] cursor-pointer select-none text-white dark:text-white">
+            <label className="flex items-center gap-2 text-[11px] cursor-pointer select-none text-foreground">
               <input type="checkbox" checked={!!data.show_alert} onChange={e => update('show_alert', e.target.checked)} className="accent-blue-500 w-3.5 h-3.5" />
-              <span className="text-foreground dark:text-slate-100">{t('nodes.action_answer_callback.show_alert_label') || 'Show as popup alert'}</span>
+              <span>{t('nodes.action_answer_callback.show_alert_label') || 'Show as popup alert'}</span>
             </label>
           </>
         )}

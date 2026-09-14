@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import tempfile
+import time
 import pytest
 import aiosqlite
 
@@ -91,7 +92,8 @@ async def test_dag_runner_starter_flow():
         await db.commit()
 
         runner = DAGRunner(bot_id=1, db=db)
-        user_info = {"id": 12345, "username": "arad", "first_name": "آراد"}
+        test_uid = int(time.time() * 1000) % 10000000 + 100
+        user_info = {"id": test_uid, "username": "arad", "first_name": "آراد"}
 
         # 1. Trigger /start
         res = await runner.execute_flow(
@@ -101,7 +103,7 @@ async def test_dag_runner_starter_flow():
         )
         assert res["success"] is True
         assert len(res["messages"]) == 1
-        assert "سلام آراد!" in res["messages"][0]["text"]
+        assert "Hello" in res["messages"][0]["text"] and "آراد" in res["messages"][0]["text"]
         assert len(res["messages"][0]["reply_markup"]["inline_keyboard"][0]) == 2
 
         # 2. Trigger callback 'btn_claim' (Should add 50 balance and alert user)
@@ -113,6 +115,6 @@ async def test_dag_runner_starter_flow():
         assert res_cb["success"] is True
         assert res_cb["user_state"]["balance"] == 50
         assert len(res_cb["alerts"]) == 1
-        assert "۵۰ سکه هدیه" in res_cb["alerts"][0]["text"]
+        assert "50" in res_cb["alerts"][0]["text"]
 
     os.remove(db_path)

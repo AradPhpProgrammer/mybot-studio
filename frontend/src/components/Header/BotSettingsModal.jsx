@@ -23,12 +23,12 @@ const CANDIDATE_FIELDS = [
   { key: 'username', label_en: 'Telegram @Username', label_fa: 'نام کاربری (@username)', default: false, required: false },
   { key: 'last_name', label_en: 'Last Name', label_fa: 'نام خانوادگی', default: false, required: false },
   { key: 'language_code', label_en: 'Language Code', label_fa: 'کد زبان تلگرام', default: false, required: false },
-  { key: 'balance', label: 'User Balance / Credits', label_fa: 'موجودی حساب کاربر', default: false, required: false },
-  { key: 'ref_code', label: 'Referral / Deep-Link Code', label_fa: 'کد معرف / لینک ورودی', default: false, required: false },
-  { key: 'inviter_id', label: 'Inviter Telegram ID', label_fa: 'شناسه معرف', default: false, required: false },
-  { key: 'last_seen', label: 'Last Activity Date', label_fa: 'تاریخ آخرین فعالیت', default: false, required: false },
-  { key: 'total_starts', label: 'Total Starts Count', label_fa: 'شمارنده تعداد استارت', default: false, required: false },
-  { key: 'custom_variables', label: 'Flow Set-Variables (NoSQL)', label_fa: 'متغیرهای سفارشی فلو', default: false, required: false },
+  { key: 'balance', label_en: 'User Balance / Credits', label_fa: 'موجودی حساب کاربر', default: false, required: false },
+  { key: 'ref_code', label_en: 'Referral / Deep-Link Code', label_fa: 'کد معرف / لینک ورودی', default: false, required: false },
+  { key: 'inviter_id', label_en: 'Inviter Telegram ID', label_fa: 'شناسه معرف', default: false, required: false },
+  { key: 'last_seen', label_en: 'Last Activity Date', label_fa: 'تاریخ آخرین فعالیت', default: false, required: false },
+  { key: 'total_starts', label_en: 'Total Starts Count', label_fa: 'شمارنده تعداد استارت', default: false, required: false },
+  { key: 'custom_variables', label_en: 'Flow Set-Variables (NoSQL)', label_fa: 'متغیرهای سفارشی فلو', default: false, required: false },
 ];
 
 export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, onExportFlow, onImportFlow }) {
@@ -329,10 +329,10 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
                           className="rounded border-border accent-accent w-3.5 h-3.5"
                         />
                         <span className="flex-1 truncate">
-                          {lang === 'fa' ? f.label_fa : f.label_en}
+                          {((lang === 'fa' || lang === 'ar') ? f.label_fa : f.label_en) || f.label_en || f.label || f.key}
                           {f.required && (
                             <span className="text-[9px] text-accent ms-1 font-semibold">
-                              ({lang === 'fa' ? 'الزامی' : 'required'})
+                              ({lang === 'fa' || lang === 'ar' ? 'الزامی' : 'required'})
                             </span>
                           )}
                         </span>

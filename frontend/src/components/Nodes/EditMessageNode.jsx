@@ -89,10 +89,28 @@ export default function EditMessageNode({ id, data, selected }) {
           className="w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] text-foreground leading-relaxed outline-none focus:border-orange-500 resize-none"
         />
 
-        {/* Button count hint (full keyboard editing is in the floating inspector) */}
+        {/* Buttons preview on canvas */}
         {buttons.length > 0 && (
-          <div className="px-2.5 py-1 rounded-lg bg-surface-tertiary/60 border border-orange-500/20 text-[10px] text-muted">
-            {t('nodes.action_edit_message.buttons_count') || 'Buttons:'} {buttons.length} row(s) — edit in the floating panel
+          <div className="space-y-1 pt-1.5 mt-0.5 border-t border-border nodrag nopan">
+            {buttons.map((row, rIdx) => (
+              <div key={rIdx} className="flex gap-1">
+                {row.map((btn, bIdx) => {
+                  let c = 'bg-surface-secondary dark:bg-[#151d30] border-border text-foreground';
+                  if (btn.style === 'primary') c = 'bg-blue-600/20 border-blue-500/50 text-blue-400 font-semibold';
+                  if (btn.style === 'success') c = 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400 font-semibold';
+                  if (btn.style === 'danger') c = 'bg-red-600/20 border-red-500/50 text-red-400 font-semibold';
+                  return (
+                    <div
+                      key={bIdx}
+                      className={`flex-1 py-1 px-1.5 rounded-md border text-[10px] text-center truncate ${c}`}
+                      title={btn.callback_data ? `Callback: ${btn.callback_data}` : btn.url ? `URL: ${btn.url}` : ''}
+                    >
+                      {btn.text || 'Button'}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         )}
       </div>

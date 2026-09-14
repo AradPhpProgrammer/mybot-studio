@@ -21,6 +21,7 @@ import {
 import { useI18n } from '../../locales/i18n';
 import RichTextToolbar from './RichTextToolbar';
 import KeyboardEditor from './KeyboardEditor';
+import ReplyKeyboardBuilder from './ReplyKeyboardBuilder';
 import { api } from '../../services/api';
 import VariableTextArea, { HighlightedText } from '../Variables/VariableTextArea';
 
@@ -58,6 +59,7 @@ export default function TelegramMockup({
   const [alertPopup, setAlertPopup] = useState(null);
   const [replyMenuOpen, setReplyMenuOpen] = useState(false);
   const [commandsMenuOpen, setCommandsMenuOpen] = useState(false);
+  const [localReplyButtons, setLocalReplyButtons] = useState([]);
   const chatBottomRef = useRef(null);
 
   // Extract all slash commands defined across flow trigger nodes (/start, /help, etc.)
@@ -147,25 +149,46 @@ export default function TelegramMockup({
     };
   }, [isDragging]);
 
-  // Rich Text Formatting
+  // Text Selection Ref for RichText toolbar wrapping
+  const lastSelectionRef = useRef({ start: 0, end: 0 });
+
+  // Rich Text Formatting: wraps ONLY the user's selected text with the HTML tag
   const handleApplyTag = (tag) => {
-    if (!selectedNode || selectedNode.type !== 'action_send_message') return;
+    if (!selectedNode || (selectedNode.type !== 'action_send_message' && selectedNode.type !== 'action_edit_message')) return;
     const currentText = selectedNode.data.text || '';
-    const updated = `<${tag}>${currentText}</${tag.split(' ')[0]}>`;
+    const { start, end } = lastSelectionRef.current;
+    const tagBase = tag.split(' ')[0];
+
+    let updated;
+    if (start !== end && end <= currentText.length) {
+      // User selected a specific portion with mouse
+      const before = currentText.slice(0, start);
+      const selectedSlice = currentText.slice(start, end);
+      const after = currentText.slice(end);
+      updated = `${before}<${tag}>${selectedSlice}</${tagBase}>${after}`;
+    } else {
+      // No selection: append or wrap whole text
+      updated = currentText ? `<${tag}>${currentText}</${tagBase}>` : `<${tag}>sample text</${tagBase}>`;
+    }
+
     onUpdateNodeData(selectedNode.id, { ...selectedNode.data, text: updated });
   };
 
   const handleInsertTable = () => {
-    if (!selectedNode || selectedNode.type !== 'action_send_message') return;
-    const tableStr = `<pre>
-┌────────┬────────┐
-│ Plan A │ 10,000 │
-├────────┼────────┤
-│ Plan B │ 20,000 │
-└────────┴────────┘
-</pre>`;
+    if (!selectedNode || (selectedNode.type !== 'action_send_message' && selectedNode.type !== 'action_edit_message')) return;
+    const tableTemplate = `
+<pre>
+┌──────────────┬──────────────┐
+│ Column 1     │ Column 2     │
+├──────────────┼──────────────┤
+│ Item A       │ 10,000       │
+│ Item B       │ 25,000       │
+└──────────────┴──────────────┘
+</pre>`.trim();
+
     const currentText = selectedNode.data.text || '';
-    onUpdateNodeData(selectedNode.id, { ...selectedNode.data, text: currentText + '\n' + tableStr });
+    const updated = currentText ? `${currentText}\n\n${tableTemplate}` : tableTemplate;
+    onUpdateNodeData(selectedNode.id, { ...selectedNode.data, text: updated });
   };
 
   // Handle clicking a reply keyboard button in the simulator: sends the button's
@@ -338,6 +361,12 @@ export default function TelegramMockup({
                   rows={4}
                   value={selectedNode.data.text || ''}
                   onChange={(v) => onUpdateNodeData(selectedNode.id, { ...selectedNode.data, text: v })}
+                  onSelect={(e) => {
+                    lastSelectionRef.current = {
+                      start: e.target.selectionStart || 0,
+                      end: e.target.selectionEnd || 0
+                    };
+                  }}
                   placeholder={t('mockup.type_message')}
                   className="w-full bg-surface-secondary border border-border rounded-xl p-2.5 text-xs text-foreground placeholder:text-field-placeholder outline-none focus:border-accent resize-none font-sans"
                 />
@@ -563,7 +592,7 @@ export default function TelegramMockup({
                 sendSimulatorMessage(simInput.trim(), isCmd ? 'command' : 'message');
               }
             }}
-            className="p-2 bg-surface border-t border-border flex items-center gap-2 relative"
+            className="p-2 bg-surface border-t border-border flex items-center gap-2 relative z-20"
           >
             {/* Blue Telegram Menu Button */}
             <div className="relative">
@@ -610,7 +639,10 @@ export default function TelegramMockup({
             {/* Reply Keyboard (+) Button */}
             <button
               type="button"
-              onClick={() => setReplyMenuOpen(!replyMenuOpen)}
+              onClick={() => {
+                setReplyMenuOpen(!replyMenuOpen);
+                setCommandsMenuOpen(false);
+              }}
               className={`p-2 rounded-xl border transition-all ${
                 replyMenuOpen
                   ? 'bg-accent text-accent-foreground border-accent'
@@ -620,44 +652,6 @@ export default function TelegramMockup({
             >
               <Plus size={13} className={replyMenuOpen ? 'rotate-45 transition-transform' : 'transition-transform'} />
             </button>
-
-            {/* Floating Reply Keyboard Menu */}
-            {replyMenuOpen && (
-              <div className="absolute bottom-12 start-2 end-2 bg-surface border border-border rounded-2xl shadow-2xl p-3 z-50 space-y-2 animate-in fade-in zoom-in-95 duration-100 max-h-56 overflow-y-auto">
-                <div className="flex items-center justify-between pb-1 border-b border-border text-[10px] font-bold text-muted uppercase tracking-wider">
-                  <span className="flex items-center gap-1.5">
-                    <Keyboard size={12} className="text-red-400" />
-                    <span>{t('mockup.reply_keyboard') || 'Reply Keyboard'}</span>
-                  </span>
-                  <span className="text-[9px] font-normal text-muted/70">
-                    {replyKeyboardButtons.length} {t('mockup.buttons_available') || 'rows'}
-                  </span>
-                </div>
-
-                {replyKeyboardButtons.length === 0 ? (
-                  <div className="p-3 text-center text-xs text-muted">
-                    {t('mockup.no_reply_buttons') || 'No reply keyboard defined in this bot. Add a Message node and set keyboard type to Reply.'}
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    {replyKeyboardButtons.map((row, rIdx) => (
-                      <div key={rIdx} className="flex gap-1.5">
-                        {row.map((btn, bIdx) => (
-                          <button
-                            key={bIdx}
-                            type="button"
-                            onClick={() => sendReplyKeyboardPress(btn)}
-                            className="flex-1 py-1.5 px-2.5 rounded-xl bg-surface-secondary hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-400 border border-border text-foreground text-xs font-medium text-center truncate transition-all shadow-xs active:scale-95"
-                          >
-                            {btn.text}
-                          </button>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
 
             <input
               type="text"
@@ -674,6 +668,38 @@ export default function TelegramMockup({
               <Send size={13} className={dir === 'rtl' ? 'rotate-180' : ''} />
             </button>
           </form>
+
+          {/* Reply Keyboard Builder: Rendered below or inside container like real Telegram keyboard */}
+          {replyMenuOpen && (
+            <ReplyKeyboardBuilder
+              rows={
+                localReplyButtons.length > 0
+                  ? localReplyButtons
+                  : selectedNode?.data?.keyboard_type === 'reply' && Array.isArray(selectedNode?.data?.buttons) && selectedNode.data.buttons.length > 0
+                  ? selectedNode.data.buttons
+                  : replyKeyboardButtons.length > 0
+                  ? replyKeyboardButtons
+                  : []
+              }
+              onChange={(newRows) => {
+                setLocalReplyButtons(newRows);
+                // Target node: currently selected node, or the first message node in the flow
+                const targetNode =
+                  selectedNode && selectedNode.type === 'action_send_message'
+                    ? selectedNode
+                    : nodes.find((n) => n.type === 'action_send_message');
+
+                if (targetNode && onUpdateNodeData) {
+                  onUpdateNodeData(targetNode.id, {
+                    ...targetNode.data,
+                    keyboard_type: 'reply',
+                    buttons: newRows
+                  });
+                }
+              }}
+              onClose={() => setReplyMenuOpen(false)}
+            />
+          )}
         </div>
       )}
     </div>

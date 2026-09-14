@@ -1,15 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
-// Known callback_data patterns for quick suggestions while typing a button event name
-const COMMON_CALLBACKS = [
-  'btn_about', 'btn_help', 'btn_back', 'btn_menu', 'btn_start', 'btn_buy',
-  'btn_cancel', 'btn_confirm', 'btn_next', 'btn_prev', 'btn_settings',
-  'btn_profile', 'btn_claim', 'btn_balance', 'btn_price', 'btn_invite',
-  'btn_support', 'menu_main', 'menu_help', 'menu_settings', 'menu_profile',
-  'btn_yes', 'btn_no', 'btn_retry', 'btn_more', 'btn_share', 'btn_subscribe'
-];
-
 function slugify(text) {
   if (!text || !text.trim()) return '';
   return text.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
@@ -29,10 +20,10 @@ export default function CallbackAutocomplete({ value, onChange, placeholder, cla
   const [pos, setPos] = useState({ x: 0, y: 0, width: 260 });
 
   const { suggestions } = aside || {};
+  // Only dynamic user-created suggestions from the active bot/flow (no hardcoded arrays)
   const pool = Array.from(new Set([
-    ...COMMON_CALLBACKS,
     ...(suggestions || []),
-    slugify(value) && slugify(value),
+    slugify(value) && slugify(value) !== value ? slugify(value) : null,
   ].filter(Boolean)));
 
   const filtered = pool.filter((s) => s !== value && s.toLowerCase().includes(filter.toLowerCase()));

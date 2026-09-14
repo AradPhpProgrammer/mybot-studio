@@ -4,6 +4,7 @@ import { PlusCircle, MinusCircle, XCircle, DivideCircle, ArrowRight } from 'luci
 import { useI18n } from '../../locales/i18n';
 
 const MATH_ICONS = {
+  math: { icon: PlusCircle, sym: '+', op: ['+', '-', '×', '÷'], color: 'text-sky-500 bg-sky-500/15 border-sky-500/30' },
   math_add: { icon: PlusCircle, sym: '+', op: ['+', '-', '×', '÷'], color: 'text-sky-500 bg-sky-500/15 border-sky-500/30' },
   math_subtract: { icon: MinusCircle, sym: '-', op: ['-', '+', '×', '÷'], color: 'text-orange-500 bg-orange-500/15 border-orange-500/30' },
   math_multiply: { icon: XCircle, sym: '×', op: ['×', '+', '-', '÷'], color: 'text-indigo-500 bg-indigo-500/15 border-indigo-500/30' },

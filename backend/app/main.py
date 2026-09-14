@@ -4,6 +4,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+import json
+import aiosqlite
 from app.api.auth import router as auth_router
 from app.api.bots import router as bots_router
 from app.api.flows import router as flows_router
@@ -15,15 +17,43 @@ from app.api.system import router as system_router
 from app.api.webhook import router as webhook_router
 from app.config import settings
 from app.database import init_db
+from app.bot_worker import start_bot_worker, stop_bot_worker
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("MyBot")
+
+ACTIVE_WORKERS: dict = {}
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting MyBot Engine...")
     await init_db()
+    # Startup: register long-polling workers for every active bot
+    try:
+        async with aiosqlite.connect(settings.DATABASE_PATH) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute("SELECT id, token, settings FROM bots WHERE is_active = 1")
+            rows = await cursor.fetchall()
+            for row in rows:
+                st = json.loads(row["settings"]) if row["settings"] else {}
+                task = start_bot_worker(int(row["id"]), row["token"], st)
+                ACTIVE_WORKERS[int(row["id"])] = task
+    except Exception as e:
+        logger.warning(f"Could not start bot workers at startup: {e}")
+
     yield
+
+    # Shutdown: cancel all polling workers gracefully
+    for task in list(ACTIVE_WORKERS.values()):
+        if not task.done():
+            task.cancel()
+    for t in ACTIVE_WORKERS.values():
+        try:
+            await t
+        except Exception:
+            pass
+    ACTIVE_WORKERS.clear()
     logger.info("MyBot Engine shutting down.")
 
 app = FastAPI(

@@ -3,6 +3,7 @@ import asyncio
 import json
 import logging
 import operator
+import random
 import re
 import time
 from typing import Any, Dict, List, Optional, Tuple
@@ -234,11 +235,18 @@ class DAGRunner:
         self, nodes: List[Dict[str, Any]], event_type: str, payload: str, context: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
         matched = []
+        has_trigger_cmd_start = any(
+            (n.get("type") or n.get("node_type")) == "trigger_command"
+            and (n.get("data", {}).get("command", "").strip() == "/start")
+            for n in nodes
+        )
         for node in nodes:
             ntype = node.get("type") or node.get("node_type")
             data = node.get("data", {})
 
             if event_type == "command" and ntype == "trigger_start":
+                if has_trigger_cmd_start:
+                    continue
                 if payload.startswith("/start"):
                     # Check referral
                     parts = payload.split(maxsplit=1)
@@ -292,6 +300,8 @@ class DAGRunner:
         edges = json.loads(flow_row["edges"]) if flow_row["edges"] else []
 
         user_obj = await self.get_or_create_user(user_info)
+        now = int(time.time())
+        dt = time.localtime(now)
         context = {
             "user": user_obj["data"],
             "user_info": user_obj,
@@ -300,6 +310,13 @@ class DAGRunner:
             "first_name": user_obj["first_name"],
             "payload": payload,
             "event_type": event_type,
+            "now": now,
+            "date": now,
+            "timestamp": now,
+            "day": dt.tm_wday,
+            "hour": dt.tm_hour,
+            "minute": dt.tm_min,
+            "random": random.random(),
             "variables": {}
         }
 
@@ -467,7 +484,7 @@ class DAGRunner:
                     elif op == "toggle":
                         context["user"][var_name] = not bool(current)
 
-            elif ntype in ("math_add", "math_subtract", "math_multiply", "math_divide"):
+            elif ntype in ("math", "math_add", "math_subtract", "math_multiply", "math_divide"):
                 # Use explicit 'operator' field instead of hardcoded by node type
                 op = data.get("operator", "+")
                 raw_a = render_variables(str(data.get("input_a", 0)), context)

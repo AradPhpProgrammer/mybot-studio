@@ -156,40 +156,13 @@ const NODE_DEFINITIONS = [
 
   // Math
   {
-    type: 'math_add',
+    type: 'math',
     category: 'math',
-    title: 'Math: Add (+)',
-    desc: 'Adds Input A and Input B.',
+    title: 'Math Calculation (A ⊕ B)',
+    desc: 'Calculates A ⊕ B using +, -, ×, or ÷ and stores the result in a variable.',
     icon: Plus,
     color: 'text-sky-500',
-    data: { input_a: '', input_b: '', output_variable: 'result' }
-  },
-  {
-    type: 'math_subtract',
-    category: 'math',
-    title: 'Math: Subtract (-)',
-    desc: 'Subtracts Input B from Input A.',
-    icon: Minus,
-    color: 'text-orange-500',
-    data: { input_a: '', input_b: '', output_variable: 'result' }
-  },
-  {
-    type: 'math_multiply',
-    category: 'math',
-    title: 'Math: Multiply (*)',
-    desc: 'Multiplies Input A by Input B.',
-    icon: XCircle,
-    color: 'text-indigo-500',
-    data: { input_a: '', input_b: '', output_variable: 'result' }
-  },
-  {
-    type: 'math_divide',
-    category: 'math',
-    title: 'Math: Divide (/)',
-    desc: 'Divides Input A by Input B.',
-    icon: DivideCircle,
-    color: 'text-emerald-500',
-    data: { input_a: '', input_b: '', output_variable: 'result' }
+    data: { input_a: '', input_b: '', operator: '+', output_variable: 'result' }
   }
 ];
 

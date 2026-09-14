@@ -194,7 +194,7 @@ function CallbackInput({ value, onChange, suggestions = [] }) {
         onKeyDown={handleKeyDown}
         onWheel={(e) => e.stopPropagation()}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
-        placeholder={t('mockup.buttons.btn_action') || 'Event ID (e.g. btn_buy)'}
+        placeholder={t('mockup.buttons.btn_action') || 'Event ID'}
         className="w-full bg-surface-secondary px-2.5 py-1.5 rounded-md text-[11px] font-mono text-foreground placeholder:text-muted outline-none border border-border focus:border-accent"
       />
       {open && filtered.length > 0 && (

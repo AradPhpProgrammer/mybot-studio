@@ -60,7 +60,7 @@ export default function MessageNode({ id, data, selected }) {
             {buttons.map((row, rIdx) => (
               <div key={rIdx} className="flex gap-1">
                 {row.map((btn, bIdx) => {
-                  let c = 'bg-surface-secondary border-border text-foreground';
+                  let c = 'bg-surface-secondary dark:bg-[#151d30] border-border text-foreground';
                   if (btn.style === 'primary') c = 'bg-blue-600/20 border-blue-500/50 text-blue-400 font-semibold';
                   if (btn.style === 'success') c = 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400 font-semibold';
                   if (btn.style === 'danger') c = 'bg-red-600/20 border-red-500/50 text-red-400 font-semibold';
