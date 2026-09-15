@@ -94,8 +94,9 @@ ADMIN_PASS=${ADMIN_PASS:-$RANDOM_PASS}
 
 JWT_SECRET=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 32 ; echo '')
 
-# 8. Create .env configuration
+# 8. Create .env configuration and directories
 cd "$(dirname "$0")"
+mkdir -p backend/uploads backend/data
 
 cat <<EOF > .env
 PANEL_PORT=${PANEL_PORT}

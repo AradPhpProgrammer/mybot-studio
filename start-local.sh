@@ -27,14 +27,16 @@ FAILED=0
 if ! command -v python3 &> /dev/null; then
     echo -e "${RED}[X] Python 3 is NOT installed or not in PATH.${NC}"
     echo -e "${YELLOW}    Please install Python 3.10+ using your package manager:${NC}"
-    echo -e "${YELLOW}    Ubuntu/Debian: sudo apt install python3 python3-pip python3-venv${NC}"
-    echo -e "${YELLOW}    macOS: brew install python3${NC}"
+    echo -e "${YELLOW}    Ubuntu/Debian: sudo apt update && sudo apt install -y python3 python3-pip python3-venv curl${NC}"
+    echo -e "${YELLOW}    Fedora: sudo dnf install -y python3 python3-pip python3-virtualenv curl${NC}"
+    echo -e "${YELLOW}    Arch: sudo pacman -S python python-pip curl${NC}"
+    echo -e "${YELLOW}    macOS: brew install python3 curl${NC}"
     FAILED=1
 fi
 
 if ! python3 -m pip --version &> /dev/null; then
     echo -e "${RED}[X] pip is NOT available.${NC}"
-    echo -e "${YELLOW}    Ubuntu/Debian: sudo apt install python3-pip${NC}"
+    echo -e "${YELLOW}    Ubuntu/Debian: sudo apt install -y python3-pip${NC}"
     FAILED=1
 fi
 
@@ -63,7 +65,7 @@ if command -v uv &> /dev/null; then
     HAS_UV=1
     echo -e "${GREEN}[OK] uv detected — fast package installer available.${NC}"
 else
-    echo -e "${YELLOW}[!] uv not found — using standard pip (tip: run 'pip install uv' for 10x faster installs).${NC}"
+    echo -e "${YELLOW}[!] uv not found — using standard pip (tip: run 'pip install uv' for faster installs).${NC}"
 fi
 
 # ------------------------------------------------------------------------------
@@ -141,8 +143,15 @@ fi
 echo -e "${GREEN}[OK] Frontend dependencies ready.${NC}"
 
 # ------------------------------------------------------------------------------
-# STEP 6: Launch Services with Process Cleanup Trap
+# STEP 6: Stop any stale processes on port 8000
 # ------------------------------------------------------------------------------
+if command -v fuser &> /dev/null; then
+    fuser -k 8000/tcp 2>/dev/null || true
+elif command -v lsof &> /dev/null; then
+    lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+fi
+
+# Launch Services with Process Cleanup Trap
 PIDS=()
 cleanup() {
     echo ""
@@ -182,6 +191,7 @@ done
 
 if [ $TRY -eq 15 ]; then
     echo -e "${RED}[X] Backend failed to respond after 30 seconds.${NC}"
+    echo -e "${YELLOW}    Check backend terminal logs for errors.${NC}"
     exit 1
 fi
 

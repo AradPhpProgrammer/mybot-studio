@@ -26,9 +26,10 @@ services:
     restart: always
     volumes:
       - mybot-data:/app/data
-      - ../backend/app/locales:/app/app/locales
-      - ../backend/app/fonts:/app/app/fonts
-      - ../backend/app/plugins:/app/app/plugins
+      - ../backend/locales:/app/locales
+      - ../backend/fonts:/app/fonts
+      - ../backend/plugins:/app/plugins
+      - ../backend/uploads:/app/uploads
     environment:
       - DATABASE_PATH=/app/data/mybot.db
       - ADMIN_SECRET_PATH=${ADMIN_SECRET_PATH:-panel_adm_x9a2k}

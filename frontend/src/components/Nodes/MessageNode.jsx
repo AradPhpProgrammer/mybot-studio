@@ -1,12 +1,14 @@
 import React from 'react';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import { Send, Image, Video, Mic, FileText } from 'lucide-react';
+import { useI18n } from '../../locales/i18n';
 import VariableTextArea from '../Variables/VariableTextArea';
 
 const MEDIA_ICONS = { text: Send, photo: Image, video: Video, voice: Mic, document: FileText };
 const MEDIA_TYPES = ['text', 'photo', 'video', 'voice', 'document'];
 
 export default function MessageNode({ id, data, selected }) {
+  const { t } = useI18n();
   const { setNodes } = useReactFlow();
   const nodeId = id || data?.id;
   const update = (field, value) => setNodes(nds => nds.map(n => n.id === nodeId ? { ...n, data: { ...n.data, [field]: value } } : n));
@@ -29,14 +31,18 @@ export default function MessageNode({ id, data, selected }) {
           )}
         </div>
         <div className="flex-1">
-          <div className="text-[10px] uppercase font-bold tracking-wider text-blue-500">Message / Media</div>
-          <div className="text-xs font-semibold text-foreground capitalize">{mediaType} message</div>
+          <div className="text-[10px] uppercase font-bold tracking-wider text-blue-500">
+            {t('nodes.action_send_message.name') || 'Message / Media'}
+          </div>
+          <div className="text-xs font-semibold text-foreground capitalize">
+            {mediaType}
+          </div>
         </div>
         {/* Keyboard type dropdown */}
         <select value={keyboardType} onChange={e => update('keyboard_type', e.target.value)}
           className="text-[9px] px-1.5 py-0.5 rounded-lg bg-surface border border-border text-foreground font-mono uppercase outline-none focus:border-blue-500">
-          <option value="inline">Inline</option>
-          <option value="reply">Reply</option>
+          <option value="inline">{t('inspector.inline_keyboard') || 'Inline'}</option>
+          <option value="reply">{t('inspector.reply_keyboard') || 'Reply'}</option>
         </select>
       </div>
 
@@ -44,10 +50,20 @@ export default function MessageNode({ id, data, selected }) {
         {/* Media type dropdown */}
         <select value={mediaType} onChange={e => update('media_type', e.target.value)}
           className="w-full px-2 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] text-foreground outline-none focus:border-blue-500">
-          {MEDIA_TYPES.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
+          {MEDIA_TYPES.map(m => (
+            <option key={m} value={m}>
+              {m.charAt(0).toUpperCase() + m.slice(1)}
+            </option>
+          ))}
         </select>
 
-        <VariableTextArea value={data.text || ''} onChange={(v) => update('text', v)} rows={2} placeholder="Message text / caption (type $ for variables)" className="w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] text-foreground leading-relaxed outline-none focus:border-blue-500 resize-none" />
+        <VariableTextArea
+          value={data.text || ''}
+          onChange={(v) => update('text', v)}
+          rows={2}
+          placeholder={t('nodes.action_send_message.desc') || 'Message text / caption (type $ for variables)'}
+          className="w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] text-foreground leading-relaxed outline-none focus:border-blue-500 resize-none"
+        />
 
         {mediaType !== 'text' && (
           <input type="text" value={data.media_url || ''} onChange={e => update('media_url', e.target.value)} placeholder="https://... or file_id"

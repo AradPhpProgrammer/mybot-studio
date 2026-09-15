@@ -92,8 +92,22 @@ def build_keyboard_markup(markup: dict):
 
 async def run_bot_worker(bot_id: int, token: str, settings_dict: dict):
     """Runs long polling loop for a specific bot with exponential backoff on failure."""
+    db_proxy = None
+    try:
+        async with aiosqlite.connect(settings.DATABASE_PATH) as _sdb:
+            _sdb.row_factory = aiosqlite.Row
+            cur = await _sdb.execute("SELECT value FROM system_settings WHERE key = 'proxy_config'")
+            prow = await cur.fetchone()
+            if prow and prow["value"]:
+                pcfg = json.loads(prow["value"])
+                db_proxy = pcfg.get("http_proxy") or pcfg.get("cf_worker_url")
+    except Exception:
+        pass
+
     session = bot_manager.get_api_session(
-        settings_dict.get("cf_worker_url"), settings_dict.get("custom_proxy")
+        settings_dict.get("cf_worker_url"),
+        settings_dict.get("custom_proxy"),
+        db_proxy_url=db_proxy
     )
     bot = Bot(token=token, session=session)
     dp = Dispatcher()

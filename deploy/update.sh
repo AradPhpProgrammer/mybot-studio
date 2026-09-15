@@ -18,7 +18,7 @@ cd "$(dirname "$0")/.."
 # 1. Pull newest code
 if [ -d ".git" ]; then
     echo "📦 Pulling latest changes from repository..."
-    git pull origin main || git pull
+    git pull origin master || git pull origin main || git pull
 fi
 
 # 2. Rebuild and restart ONLY panel containers

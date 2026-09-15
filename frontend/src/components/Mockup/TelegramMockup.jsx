@@ -244,16 +244,16 @@ export default function TelegramMockup({
     }
   };
 
-  // Minimized Floating Bubble
+  // Minimized Floating Bubble - always stay at bottom-right regardless of LTR/RTL
   if (isMinimized) {
     return (
       <button
         onClick={() => setIsMinimized(false)}
-        className="fixed bottom-6 end-6 z-50 w-14 h-14 rounded-full bg-accent text-accent-foreground shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group"
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-accent text-accent-foreground shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group"
         title={t('mockup.title')}
       >
         <MessageCircle size={26} />
-        <span className="absolute -top-1 -end-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-surface animate-ping" />
+        <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-surface animate-ping" />
       </button>
     );
   }

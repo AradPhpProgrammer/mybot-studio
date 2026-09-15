@@ -71,7 +71,7 @@ export default function MathNode({ id, data, selected, type }) {
             type="text"
             value={a}
             onChange={(e) => update('input_a', e.target.value)}
-            placeholder="A ($score)"
+            placeholder={t('inspector.input_a') || 'A ($score)'}
             className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-xs font-mono text-foreground text-center outline-none focus:border-sky-500"
           />
 
@@ -93,7 +93,7 @@ export default function MathNode({ id, data, selected, type }) {
             type="text"
             value={b}
             onChange={(e) => update('input_b', e.target.value)}
-            placeholder="B (10)"
+            placeholder={t('inspector.input_b') || 'B (10)'}
             className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-xs font-mono text-foreground text-center outline-none focus:border-sky-500"
           />
         </div>

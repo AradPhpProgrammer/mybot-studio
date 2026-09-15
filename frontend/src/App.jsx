@@ -470,6 +470,7 @@ export default function App() {
             onClose={() => setQuickSearchOpen(false)}
             onSelectNode={handleAddNode}
             position={quickSearchPos}
+            currentBot={currentBot}
           />
 
           {/* Plugins Modal */}

@@ -29,9 +29,17 @@ export default function ActionNode({ id, data, selected, type }) {
           <Icon size={15} />
         </div>
         <div>
-          <div className="text-[10px] uppercase font-bold tracking-wider opacity-80">Action</div>
+          <div className="text-[10px] uppercase font-bold tracking-wider opacity-80">
+            {t('sidebar.actions') || 'Action'}
+          </div>
           <div className="text-xs font-semibold text-foreground">
-            {isHttp ? 'HTTP Request' : isDelay ? 'Delay / Wait' : isVar ? 'Set Variable' : 'Answer Callback'}
+            {isHttp
+              ? (t('nodes.action_http_request.name') || 'HTTP Request')
+              : isDelay
+              ? (t('nodes.action_delay.name') || 'Delay / Wait')
+              : isVar
+              ? (t('nodes.action_set_variable.name') || 'Set Variable')
+              : (t('nodes.action_answer_callback.name') || 'Answer Callback')}
           </div>
         </div>
       </div>
@@ -40,28 +48,27 @@ export default function ActionNode({ id, data, selected, type }) {
         {isHttp && (
           <>
             <div className="text-[10px] text-muted flex items-center justify-between">
-              <span>Web Request (API / Webhook)</span>
+              <span>{t('nodes.action_http_request.desc') || 'Web Request (API / Webhook)'}</span>
               <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30">
                 ${data.output_variable || 'http_response'}
               </span>
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] text-muted font-medium">HTTP Method</label>
+              <label className="text-[10px] text-muted font-medium">{t('inspector.operation') || 'HTTP Method'}</label>
               <select value={data.method || 'GET'} onChange={e => update('method', e.target.value)}
                 className="w-full px-2 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] font-mono text-foreground outline-none focus:border-purple-500">
                 {['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] text-muted font-medium">Target URL (Endpoints & AI APIs)</label>
+              <label className="text-[10px] text-muted font-medium">URL</label>
               <input type="text" value={data.url || ''} onChange={e => update('url', e.target.value)} placeholder="https://api.openai.com/v1/chat..."
                 className="w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] font-mono text-foreground outline-none focus:border-purple-500" />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] text-muted font-medium">Result Variable (stored as custom var)</label>
+              <label className="text-[10px] text-muted font-medium">{t('inspector.output_variable') || 'Result Variable'}</label>
               <input type="text" value={data.output_variable ?? 'http_response'} onChange={e => update('output_variable', e.target.value)} placeholder="http_response"
                 className="w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-purple-500/40 text-[11px] font-mono text-purple-300 outline-none focus:border-purple-500" />
-              <div className="text-[9px] text-muted">Available in next nodes as <span className="font-mono text-purple-400 font-semibold">${data.output_variable || 'http_response'}</span></div>
             </div>
           </>
         )}
@@ -69,26 +76,26 @@ export default function ActionNode({ id, data, selected, type }) {
           <div className="flex items-center gap-2">
             <input type="number" min="0" max="10" value={data.seconds || 1} onChange={e => update('seconds', Number(e.target.value))}
               className="flex-1 px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] font-mono text-foreground outline-none focus:border-indigo-500" />
-            <span className="text-[11px] text-muted">seconds</span>
+            <span className="text-[11px] text-muted">{t('common.seconds') || 'seconds'}</span>
           </div>
         )}
         {isVar && (
           <>
             <div className="flex items-center gap-2">
-              <input type="text" value={data.variable_name || ''} onChange={e => update('variable_name', e.target.value)} placeholder="Variable name"
+              <input type="text" value={data.variable_name || ''} onChange={e => update('variable_name', e.target.value)} placeholder={t('inspector.variable_name') || 'Variable name'}
                 className="flex-1 min-w-0 px-2 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] font-mono text-foreground outline-none focus:border-purple-500" />
               <select value={data.operation || 'set'} onChange={e => update('operation', e.target.value)}
                 className="px-2 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] text-foreground outline-none focus:border-purple-500">
                 {['set', 'add', 'subtract', 'toggle'].map(o => <option key={o} value={o}>{o}</option>)}
               </select>
             </div>
-            <input type="text" value={data.value || ''} onChange={e => update('value', e.target.value)} placeholder="Value"
+            <input type="text" value={data.value || ''} onChange={e => update('value', e.target.value)} placeholder={t('inspector.value') || 'Value'}
               className="w-full px-2.5 py-1.5 rounded-lg bg-surface-tertiary border border-border text-[11px] font-mono text-foreground outline-none focus:border-purple-500" />
           </>
         )}
         {isCallback && (
           <>
-            <input type="text" value={data.text || ''} onChange={e => update('text', e.target.value)} placeholder="Alert text"
+            <input type="text" value={data.text || ''} onChange={e => update('text', e.target.value)} placeholder={t('inspector.text_content') || 'Alert text'}
               className="w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] text-foreground outline-none focus:border-blue-500" />
             <label className="flex items-center gap-2 text-[11px] cursor-pointer select-none text-foreground">
               <input type="checkbox" checked={!!data.show_alert} onChange={e => update('show_alert', e.target.checked)} className="accent-blue-500 w-3.5 h-3.5" />

@@ -30,7 +30,11 @@
     "unsaved": "Unsaved changes",
     "no_results": "No results found",
     "confirm_delete_bot": "Are you sure you want to delete this bot? All its flows and user data will be deleted.",
-    "template_error": "Template error: {error}"
+    "template_error": "Template error: {error}",
+    "locked_node_hint": "Enable the User Database toggle in bot settings to use this node",
+    "locked_badge": "Disabled in Settings",
+    "enable_db_node_hint": "Enable User Variables Database in bot settings to use this node.",
+    "seconds": "seconds"
   },
   "sidebar": {
     "profiles": "Profiles",

@@ -120,21 +120,51 @@ STARTER_TEMPLATE_EDGES = [
 ]
 
 
+def get_system_detected_proxy() -> Optional[str]:
+    """Auto-detects active OS-level proxy (Windows Settings, macOS, Linux environment)."""
+    try:
+        import urllib.request
+        proxies = urllib.request.getproxies()
+        p = proxies.get("https") or proxies.get("http")
+        if p:
+            # Ensure protocol prefix exists
+            if not p.startswith("http://") and not p.startswith("https://") and not p.startswith("socks5://"):
+                p = f"http://{p}"
+            return p
+    except Exception:
+        pass
+    # Fallback to standard environment variables
+    return os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY") or os.environ.get("ALL_PROXY")
+
+
 class BotManager:
     """Manages multi-bot sessions, token validation, reverse proxies, and webhook routing."""
 
     def __init__(self):
         self.active_bots: Dict[int, Bot] = {}
 
-    def get_api_session(self, cf_worker_url: Optional[str] = None, proxy_url: Optional[str] = None) -> Optional[AiohttpSession]:
+    def get_api_session(
+        self,
+        cf_worker_url: Optional[str] = None,
+        proxy_url: Optional[str] = None,
+        db_proxy_url: Optional[str] = None
+    ) -> Optional[AiohttpSession]:
+        # Priority order:
+        # 1. Bot-specific Cloudflare Worker URL
+        # 2. Bot-specific custom proxy URL
+        # 3. Global Cloudflare Worker URL from settings
+        # 4. Global proxy from DB system_settings (if provided)
+        # 5. Global HTTP_PROXY from settings/.env
+        # 6. System-detected proxy from Windows/OS settings (e.g. active VPN)
         worker = cf_worker_url or settings.CF_PROXY_URL
-        proxy = proxy_url or settings.HTTP_PROXY
+        proxy = proxy_url or db_proxy_url or settings.HTTP_PROXY or get_system_detected_proxy()
 
         if worker:
             server = TelegramAPIServer.from_base(worker.rstrip("/"))
             return AiohttpSession(api=server)
         elif proxy:
             try:
+                logger.info(f"Using proxy for Telegram Bot API: {proxy}")
                 return AiohttpSession(proxy=proxy)
             except Exception as e:
                 logger.warning(f"Could not create proxy session ({proxy}): {e}. Falling back to direct connection.")
@@ -152,17 +182,37 @@ class BotManager:
         return None
 
     async def verify_token(
-        self, token: str, cf_worker_url: Optional[str] = None, proxy_url: Optional[str] = None
+        self,
+        token: str,
+        cf_worker_url: Optional[str] = None,
+        proxy_url: Optional[str] = None,
+        db: Optional[aiosqlite.Connection] = None
     ) -> Dict[str, Any]:
         clean_token = token.strip()
         extracted_id = self.parse_token_bot_id(clean_token)
         if not extracted_id:
-            return {"valid": False, "error": "Invalid token format. Token must look like 123456789:ABCdef..."}
+            return {
+                "valid": False,
+                "error": "فرمت توکن نامعتبر است. توکن باید به صورت 123456789:ABCdef... باشد."
+            }
 
-        session = self.get_api_session(cf_worker_url, proxy_url)
+        # Try to pull global proxy from DB if connection is passed
+        db_proxy = None
+        if db:
+            try:
+                cursor = await db.execute("SELECT value FROM system_settings WHERE key = 'proxy_config'")
+                row = await cursor.fetchone()
+                if row and row["value"]:
+                    cfg = json.loads(row["value"])
+                    db_proxy = cfg.get("http_proxy") or cfg.get("cf_worker_url")
+            except Exception:
+                pass
+
+        # Attempt connection (with auto system proxy detection)
+        session = self.get_api_session(cf_worker_url, proxy_url, db_proxy_url=db_proxy)
         bot = Bot(token=clean_token, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
         try:
-            me = await asyncio.wait_for(bot.get_me(), timeout=8.0)
+            me = await asyncio.wait_for(bot.get_me(), timeout=12.0)
             return {
                 "valid": True,
                 "id": me.id,
@@ -174,16 +224,18 @@ class BotManager:
             }
         except Exception as e:
             err_str = str(e)
-            logger.warning(f"Live token check with Telegram failed ({err_str[:120]}). Using offline fallback for ID {extracted_id}.")
+            logger.warning(f"Telegram get_me failed: {err_str}")
+            # If the token is genuinely invalid according to Telegram
+            if "Unauthorized" in err_str or "Not Found" in err_str:
+                return {
+                    "valid": False,
+                    "error": "توکن ربات اشتباه است یا توسط تلگرام باطل شده است. لطفاً توکن جدید را از @BotFather دریافت نمایید."
+                }
+            # Network restriction / connection error — do NOT return fake bot info!
             return {
-                "valid": True,
+                "valid": False,
                 "id": extracted_id,
-                "first_name": f"Bot {extracted_id}",
-                "username": f"bot_{extracted_id}",
-                "can_join_groups": True,
-                "can_read_all_group_messages": False,
-                "is_online_verified": False,
-                "network_warning": "Telegram was not reached directly (network restriction). Profile created from token ID. Set up Cloudflare Tunnel / proxy in Settings to go online.",
+                "error": "امکان اتصال به سرورهای تلگرام وجود ندارد. لطفاً فیلترشکن سیستم خود را بررسی کرده یا در بخش تنظیمات پنل، پروکسی یا ورکر کلودفلر را تنظیم کنید."
             }
         finally:
             try:
@@ -204,9 +256,9 @@ class BotManager:
         if await existing.fetchone():
             raise ValueError("This bot token is already registered. Open it from your profiles or delete it first.")
 
-        verif = await self.verify_token(clean_token, cf_worker_url, custom_proxy)
+        verif = await self.verify_token(clean_token, cf_worker_url, custom_proxy, db=db)
         if not verif.get("valid"):
-            raise ValueError(f"Invalid Telegram Bot Token: {verif.get('error')}")
+            raise ValueError(verif.get("error") or "توکن ربات معتبر نیست.")
 
         secret = hashlib.sha256(clean_token.encode()).hexdigest()[:16]
         bot_settings = {
@@ -321,8 +373,12 @@ class BotManager:
         verif = await self.verify_token(
             row["token"],
             settings_dict.get("cf_worker_url"),
-            settings_dict.get("custom_proxy")
+            settings_dict.get("custom_proxy"),
+            db=db
         )
+
+        if not verif.get("valid"):
+            raise ValueError(verif.get("error") or "خطا در برقراری ارتباط با سرورهای تلگرام.")
 
         new_name = verif.get("first_name")
         new_username = verif.get("username")

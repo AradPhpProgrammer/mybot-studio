@@ -166,11 +166,18 @@ const NODE_DEFINITIONS = [
   }
 ];
 
-export default function QuickSearchPalette({ isOpen, onClose, onSelectNode, position }) {
+export default function QuickSearchPalette({ isOpen, onClose, onSelectNode, position, currentBot }) {
   const { t } = useI18n();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef(null);
+
+  // Whether the flow-variables / user database feature is enabled for this bot.
+  // When disabled, the "Set User Variable" node is shown blurred & disabled.
+  const userDbEnabled = Boolean(currentBot?.settings?.enable_user_database);
+
+  // Nodes that require the user-database feature to be enabled.
+  const requiresUserDb = (type) => type === 'action_set_variable';
 
   useEffect(() => {
     if (isOpen) {
@@ -248,24 +255,31 @@ export default function QuickSearchPalette({ isOpen, onClose, onSelectNode, posi
               const isSelected = idx === selectedIndex;
               const displayTitle = t(`nodes.${item.type}.name`, item.title);
               const displayDesc = t(`nodes.${item.type}.desc`, item.desc);
+              const locked = requiresUserDb(item.type) && !userDbEnabled;
 
               return (
                 <div
                   key={item.type}
                   onClick={() => {
+                    if (locked) return; // do not add when the DB feature is disabled
                     onSelectNode(item);
                     onClose();
                   }}
                   onMouseEnter={() => setSelectedIndex(idx)}
-                  className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors ${
-                    isSelected
-                      ? 'bg-accent text-accent-foreground shadow-sm'
-                      : 'hover:bg-surface-secondary text-foreground'
+                  className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${
+                    locked
+                      ? 'opacity-50 blur-[0.5px] cursor-not-allowed filter'
+                      : 'cursor-pointer hover:bg-surface-secondary'
+                  } ${
+                    isSelected && !locked ? 'bg-accent text-accent-foreground shadow-sm' : 'text-foreground'
                   }`}
+                  title={locked
+                    ? (t('common.enable_db_node_hint') || 'Enable User Variables Database in bot settings to use this node')
+                    : ''}
                 >
                   <div
                     className={`w-8 h-8 rounded-lg flex items-center justify-center border ${
-                      isSelected
+                      isSelected && !locked
                         ? 'bg-accent-foreground/15 border-accent-foreground/25 text-accent-foreground'
                         : `bg-surface-tertiary border-border ${item.color}`
                     }`}
@@ -276,12 +290,20 @@ export default function QuickSearchPalette({ isOpen, onClose, onSelectNode, posi
                     <div className="text-xs font-semibold truncate">{displayTitle}</div>
                     <div
                       className={`text-[11px] truncate ${
-                        isSelected ? 'opacity-80' : 'text-muted'
+                        isSelected && !locked ? 'opacity-80' : locked ? 'text-accent' : 'text-muted'
                       }`}
                     >
-                      {displayDesc}
+                      {locked
+                        ? (t('common.locked_node_hint') || 'Enable User Variables Database in Settings')
+                        : displayDesc}
                     </div>
                   </div>
+
+                  {locked && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-accent/20 text-accent border border-accent/30 shrink-0">
+                      {t('common.locked_badge') || 'Locked'}
+                    </span>
+                  )}
                 </div>
               );
             })

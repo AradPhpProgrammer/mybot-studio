@@ -51,6 +51,8 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
   const [trackedFields, setTrackedFields] = useState(['telegram_id', 'chat_id', 'first_name', 'start_date']);
   const [dbFileName, setDbFileName] = useState('');
   const [subscribersCount, setSubscribersCount] = useState(0);
+  // Master toggle: enable the flow-variables / user database feature. Off by default.
+  const [enableUserDb, setEnableUserDb] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -71,6 +73,7 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
       setCustomProxy(s.custom_proxy || '');
       setCfWorkerUrl(s.cf_worker_url || '');
       setPhotoUrl(s.photo_url || bot.photo_url || '');
+      setEnableUserDb(Boolean(s.enable_user_database));
 
       const currentTracked = Array.isArray(s.tracked_user_fields) && s.tracked_user_fields.length > 0
         ? s.tracked_user_fields
@@ -137,6 +140,7 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
         sync_commands_automatically: syncCommands,
         custom_proxy: customProxy.trim(),
         cf_worker_url: cfWorkerUrl.trim(),
+        enable_user_database: enableUserDb,
         tracked_user_fields: trackedFields
       };
 
@@ -303,6 +307,44 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
 
             {dbMenuOpen && (
               <div className="p-3.5 border-t border-border bg-surface space-y-2.5">
+                {/* Master toggle: enable flow-variables / user database */}
+                <label className={`flex items-center justify-between gap-2.5 p-2.5 rounded-xl border cursor-pointer select-none transition-colors ${
+                    enableUserDb
+                      ? 'bg-accent/15 border-accent/50'
+                      : 'bg-surface-secondary/60 border-border hover:border-accent/40'
+                  }`}>
+                  <div className="flex items-start gap-2">
+                    <Database size={15} className={enableUserDb ? 'text-accent' : 'text-muted'} />
+                    <div>
+                      <div className="text-xs font-bold text-foreground">
+                        {lang === 'fa' ? 'فعال‌سازی دیتابیس متغیرهای کاربر (فلو)' : 'Enable User Variables Database (Flow)'}
+                      </div>
+                      <div className="text-[11px] text-muted leading-relaxed">
+                        {lang === 'fa'
+                          ? 'این تیک را روشن کنید تا نود «تنظیم متغیر کاربر» و ذخیره‌سازی داده در دسترس باشد.'
+                          : 'Turn this on to enable Set User Variable nodes and data persistence.'}
+                      </div>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={enableUserDb}
+                    onChange={(e) => setEnableUserDb(e.target.checked)}
+                    className="rounded border-border accent-accent w-4 h-4 shrink-0"
+                  />
+                </label>
+
+                {!enableUserDb && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted">
+                    <ChevronUp size={12} className="text-accent" />
+                    <span>
+                      {lang === 'fa'
+                        ? 'نود «تنظیم متغیر کاربر» در لیست نودها تا زمانی که این تیک روشن نشود، غیرفعال و بلور نمایش داده می‌شود.'
+                        : 'The Set User Variable node stays disabled/blurred until this is enabled.'}
+                    </span>
+                  </div>
+                )}
+
                 <p className="text-[11px] text-muted leading-relaxed">
                   {lang === 'fa'
                     ? 'هر ربات دیتابیس لوکال مجزای خودش را دارد. فقط فیلدهایی که تیک خورده باشند ذخیره می‌شوند تا دیتابیس شلوغ و سنگین نشود.'
