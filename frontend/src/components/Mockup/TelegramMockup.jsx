@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { reduceDeliveredReplyKeyboard } from './simulatorKeyboard.mjs';
 import { 
   Send, 
   Bot, 
@@ -20,24 +21,26 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../../locales/i18n';
 import RichTextToolbar from './RichTextToolbar';
-import KeyboardEditor from './KeyboardEditor';
-import ReplyKeyboardBuilder from './ReplyKeyboardBuilder';
+import KeyboardLayoutEditor from '../Nodes/KeyboardLayoutEditor';
+import { isKeyboardNode } from '../Nodes/keyboardGraph.mjs';
 import { api } from '../../services/api';
 import VariableTextArea, { HighlightedText } from '../Variables/VariableTextArea';
+import { clampMockupPosition, getMockupSize } from './mockupWindow.mjs';
 
 export default function TelegramMockup({
   currentBot,
   selectedNode,
   onUpdateNodeData,
   onFocusNode,
-  nodes = []
+  nodes = [],
+  edges = []
 }) {
   const { t, dir } = useI18n();
   const [isMinimized, setIsMinimized] = useState(false);
   const [activeTab, setActiveTab] = useState('edit'); // 'edit' or 'simulator'
   
   // Dragging state
-  const [position, setPosition] = useState({ x: window.innerWidth - 420, y: 80 });
+  const [position, setPosition] = useState(() => clampMockupPosition({ x: window.innerWidth - 420, y: 80 }, window.innerWidth, window.innerHeight));
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
 
@@ -56,10 +59,11 @@ export default function TelegramMockup({
   ]);
   const [simInput, setSimInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [lastChatAction, setLastChatAction] = useState(null);
   const [alertPopup, setAlertPopup] = useState(null);
   const [replyMenuOpen, setReplyMenuOpen] = useState(false);
   const [commandsMenuOpen, setCommandsMenuOpen] = useState(false);
-  const [localReplyButtons, setLocalReplyButtons] = useState([]);
+  const [deliveredKeyboard, setDeliveredKeyboard] = useState({ source: null, buttons: [] });
   const chatBottomRef = useRef(null);
 
   // Extract all slash commands defined across flow trigger nodes (/start, /help, etc.)
@@ -67,11 +71,11 @@ export default function TelegramMockup({
     const cmds = [];
     nodes.forEach((n) => {
       if (n?.type === 'trigger_start') {
-        cmds.push({ command: '/start', description: 'Start the bot / main menu' });
+        cmds.push({ command: '/start', description: t('mockup.start_description') });
       } else if (n?.type === 'trigger_command') {
         cmds.push({
           command: n.data?.command || '/cmd',
-          description: n.data?.description || 'Custom command'
+          description: n.data?.description || t('mockup.custom_command')
         });
       }
     });
@@ -82,20 +86,7 @@ export default function TelegramMockup({
       seen.add(c.command);
       return true;
     });
-  }, [nodes]);
-
-  // Collect all reply keyboard buttons defined across the flow (keyboard_type === 'reply')
-  const replyKeyboardButtons = useMemo(() => {
-    const rows = [];
-    nodes.forEach((n) => {
-      const btns = n?.data?.buttons;
-      const kt = n?.data?.keyboard_type;
-      if (kt === 'reply' && Array.isArray(btns)) {
-        rows.push(...btns);
-      }
-    });
-    return rows;
-  }, [nodes]);
+  }, [nodes, t]);
 
   // Collect all callback identifiers defined across the flow so the keyboard
   // editor and button-triggers can suggest existing user-defined IDs (no hardcoding).
@@ -130,12 +121,18 @@ export default function TelegramMockup({
   };
 
   useEffect(() => {
+    const handleResize = () => setPosition(current => clampMockupPosition(current, window.innerWidth, window.innerHeight));
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
     const handleMouseMove = (e) => {
       if (!isDragging) return;
-      setPosition({
-        x: Math.max(10, Math.min(window.innerWidth - 400, e.clientX - dragStartRef.current.x)),
-        y: Math.max(60, Math.min(window.innerHeight - 300, e.clientY - dragStartRef.current.y))
-      });
+      setPosition(clampMockupPosition({
+        x: e.clientX - dragStartRef.current.x,
+        y: e.clientY - dragStartRef.current.y
+      }, window.innerWidth, window.innerHeight));
     };
     const handleMouseUp = () => setIsDragging(false);
 
@@ -168,7 +165,7 @@ export default function TelegramMockup({
       updated = `${before}<${tag}>${selectedSlice}</${tagBase}>${after}`;
     } else {
       // No selection: append or wrap whole text
-      updated = currentText ? `<${tag}>${currentText}</${tagBase}>` : `<${tag}>sample text</${tagBase}>`;
+      updated = currentText ? `<${tag}>${currentText}</${tagBase}>` : `<${tag}>${t('mockup.sample_text')}</${tagBase}>`;
     }
 
     onUpdateNodeData(selectedNode.id, { ...selectedNode.data, text: updated });
@@ -176,15 +173,7 @@ export default function TelegramMockup({
 
   const handleInsertTable = () => {
     if (!selectedNode || (selectedNode.type !== 'action_send_message' && selectedNode.type !== 'action_edit_message')) return;
-    const tableTemplate = `
-<pre>
-┌──────────────┬──────────────┐
-│ Column 1     │ Column 2     │
-├──────────────┼──────────────┤
-│ Item A       │ 10,000       │
-│ Item B       │ 25,000       │
-└──────────────┴──────────────┘
-</pre>`.trim();
+    const tableTemplate = t('mockup.table_template');
 
     const currentText = selectedNode.data.text || '';
     const updated = currentText ? `${currentText}\n\n${tableTemplate}` : tableTemplate;
@@ -224,16 +213,39 @@ export default function TelegramMockup({
         setTimeout(() => setAlertPopup(null), 3500);
       }
 
+      if (Array.isArray(res.chat_actions) && res.chat_actions.length > 0) {
+        setLastChatAction(res.chat_actions[res.chat_actions.length - 1]);
+      }
+
       if (res.messages && res.messages.length > 0) {
-        const newBotMsgs = res.messages.map((m, idx) => ({
-          id: Date.now() + idx + 1,
-          sender: 'bot',
-          text: m.text,
-          media_type: m.media_type,
-          media_url: m.media_url,
-          reply_markup: m.reply_markup
-        }));
-        setSimMessages(prev => [...prev, ...newBotMsgs]);
+        setDeliveredKeyboard(current => reduceDeliveredReplyKeyboard(current, res.messages));
+        setSimMessages((prev) => {
+          let updated = [...prev];
+          for (const m of res.messages) {
+            if (m.is_edit) {
+              const lastBotIdx = updated.map((x) => x.sender).lastIndexOf('bot');
+              if (lastBotIdx !== -1) {
+                updated[lastBotIdx] = {
+                  ...updated[lastBotIdx],
+                  text: m.text !== undefined && m.text !== '' ? m.text : updated[lastBotIdx].text,
+                  media_type: m.media_type || updated[lastBotIdx].media_type,
+                  media_url: m.media_url || updated[lastBotIdx].media_url,
+                  reply_markup: m.reply_markup !== undefined ? m.reply_markup : updated[lastBotIdx].reply_markup
+                };
+                continue;
+              }
+            }
+            updated.push({
+              id: Date.now() + Math.random(),
+              sender: 'bot',
+              text: m.text,
+              media_type: m.media_type,
+              media_url: m.media_url,
+              reply_markup: m.reply_markup
+            });
+          }
+          return updated;
+        });
       }
     } catch (err) {
       setIsTyping(false);
@@ -249,11 +261,12 @@ export default function TelegramMockup({
     return (
       <button
         onClick={() => setIsMinimized(false)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-accent text-accent-foreground shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group"
+        aria-label={t('mockup.title')}
+        className="mockup-bubble fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-accent text-accent-foreground shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group"
         title={t('mockup.title')}
       >
         <MessageCircle size={26} />
-        <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-surface animate-ping" />
+        <span className="absolute -top-1 -right-1 w-4 h-4 bg-success rounded-full border-2 border-surface" />
       </button>
     );
   }
@@ -262,15 +275,20 @@ export default function TelegramMockup({
   const isMessageNode = selectedNode?.type === 'action_send_message' || isEditNode;
   const isConditionNode = selectedNode?.type === 'action_condition';
 
+  // Keep drag bounds and rendered dimensions in sync on every resize.
+  const mockupSize = getMockupSize(window.innerWidth, window.innerHeight);
+  const mockupStyle = { left: `${position.x}px`, top: `${position.y}px`, width: `${mockupSize.width}px`, height: `${mockupSize.height}px` };
+
   return (
     <div
-      style={{ left: `${position.x}px`, top: `${position.y}px` }}
-      className="fixed z-40 w-[380px] max-w-[95vw] h-[600px] max-h-[85vh] bg-surface border border-border/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
+      style={mockupStyle}
+      dir={dir}
+      className="telegram-mockup fixed z-40 bg-surface border border-border/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
     >
       {/* Draggable Header */}
       <div
         onMouseDown={handleMouseDown}
-        className="px-3.5 py-2.5 bg-surface-secondary/80 border-b border-border flex items-center justify-between cursor-move select-none"
+        className="mockup-titlebar px-3.5 py-2.5 bg-surface-secondary border-b border-border flex items-center justify-between gap-2 shrink-0 cursor-move select-none"
       >
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400">
@@ -278,7 +296,7 @@ export default function TelegramMockup({
           </div>
           <div>
             <div className="text-xs font-bold text-foreground">
-              {currentBot ? `@${currentBot.username}` : 'Telegram Mockup'}
+              {currentBot ? `@${currentBot.username}` : t('mockup.title')}
             </div>
             <div className="text-[10px] text-muted flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -288,7 +306,7 @@ export default function TelegramMockup({
         </div>
 
         {/* Tab & Window Controls */}
-        <div className="flex items-center gap-1 no-drag">
+        <div className="flex items-center gap-1 no-drag shrink-0">
           <div className="flex bg-surface p-0.5 rounded-lg border border-border text-[11px]">
             <button
               onClick={() => setActiveTab('edit')}
@@ -296,7 +314,7 @@ export default function TelegramMockup({
                 activeTab === 'edit' ? 'bg-accent text-accent-foreground font-semibold' : 'text-muted hover:text-foreground'
               }`}
             >
-              {t('mockup.edit_tab') || 'Edit'}
+              {t('mockup.edit_tab')}
             </button>
             <button
               onClick={() => setActiveTab('simulator')}
@@ -304,14 +322,14 @@ export default function TelegramMockup({
                 activeTab === 'simulator' ? 'bg-accent text-accent-foreground font-semibold' : 'text-muted hover:text-foreground'
               }`}
             >
-              {t('mockup.test_tab') || 'Test Chat'}
+              {t('mockup.test_tab')}
             </button>
           </div>
 
           <button
             onClick={() => setIsMinimized(true)}
             className="p-1.5 rounded-lg hover:bg-surface-tertiary text-muted hover:text-foreground transition-colors"
-            title="Minimize"
+            title={t('common.minimize')} aria-label={t('common.minimize')}
           >
             <Minimize2 size={13} />
           </button>
@@ -330,8 +348,12 @@ export default function TelegramMockup({
 
       {/* TAB 1: VISUAL EDIT MODE */}
       {activeTab === 'edit' && (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 no-drag bg-background/50">
-          {isMessageNode ? (
+        <div data-graph-editor className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-4 no-drag bg-surface-tertiary">
+          {isKeyboardNode(selectedNode) ? (
+            <KeyboardLayoutEditor variant="compact" key={selectedNode.id} nodeId={selectedNode.id} data={selectedNode.data}
+              nodes={nodes} edges={edges} knownIdentifiers={flowIdentifiers}
+              onChange={data => onUpdateNodeData(selectedNode.id, data)} />
+          ) : isMessageNode ? (
             <div className="space-y-3">
               {/* Media Type Switch */}
               <div className="flex items-center justify-between">
@@ -343,21 +365,22 @@ export default function TelegramMockup({
                   }
                   className="bg-surface-secondary px-2 py-1 rounded-lg text-xs text-foreground border border-border outline-none"
                 >
-                  <option value="text">{t('mockup.media_types.text') || 'Text'}</option>
-                  <option value="photo">{t('mockup.media_types.photo') || 'Photo'}</option>
-                  <option value="video">{t('mockup.media_types.video') || 'Video'}</option>
-                  <option value="voice">{t('mockup.media_types.voice') || 'Voice'}</option>
-                  <option value="document">{t('mockup.media_types.document') || 'Document'}</option>
+                  <option value="text">{t('mockup.media_types.text')}</option>
+                  <option value="photo">{t('mockup.media_types.photo')}</option>
+                  <option value="video">{t('mockup.media_types.video')}</option>
+                  <option value="voice">{t('mockup.media_types.voice')}</option>
+                  <option value="document">{t('mockup.media_types.document')}</option>
                 </select>
               </div>
 
               {/* Rich Text Toolbar */}
-              <RichTextToolbar onApplyTag={handleApplyTag} onInsertTable={handleInsertTable} />
+              <div className="mockup-rich-toolbar"><RichTextToolbar onApplyTag={handleApplyTag} onInsertTable={handleInsertTable} /></div>
 
               {/* Text Input */}
               <div className="space-y-1">
                 <label className="text-[11px] font-medium text-muted">{t('mockup.text_label')}:</label>
                 <VariableTextArea
+                  data-graph-editor
                   rows={4}
                   value={selectedNode.data.text || ''}
                   onChange={(v) => onUpdateNodeData(selectedNode.id, { ...selectedNode.data, text: v })}
@@ -388,32 +411,32 @@ export default function TelegramMockup({
                 )}
               </div>
 
-              {/* Keyboard Editor */}
-              <KeyboardEditor
-                buttons={selectedNode.data.buttons || []}
-                knownIdentifiers={flowIdentifiers}
-                onChange={(newButtons) =>
-                  onUpdateNodeData(selectedNode.id, { ...selectedNode.data, buttons: newButtons })
-                }
-              />
+              {/* Compatibility only: new keyboards belong to dedicated nodes. Keep
+                  existing embedded data editable if a graph has not been migrated. */}
+              {Array.isArray(selectedNode.data.buttons) && selectedNode.data.buttons.some(row => row?.length) && (
+                <KeyboardLayoutEditor variant="compact" key={selectedNode.id} nodeId={selectedNode.id} data={selectedNode.data}
+                  nodes={nodes} edges={edges} embedded knownIdentifiers={flowIdentifiers}
+                  onChange={data => onUpdateNodeData(selectedNode.id, data)} />
+              )}
             </div>
           ) : isConditionNode ? (
             <div className="space-y-4">
               <div className="p-3 rounded-xl bg-surface border border-border space-y-3">
                 <div className="text-xs font-bold text-foreground flex items-center justify-between">
-                  <span>{t('nodes.action_condition.name') || 'Branch (If / Else)'}</span>
+                  <span>{t('nodes.action_condition.name')}</span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/30 font-mono">
-                    Logic
+                    {t('nodes.action_condition.category')}
                   </span>
                 </div>
                 <p className="text-[11px] text-muted">
-                  {t('nodes.action_condition.desc') || 'Branches execution flow based on condition.'}
+                  {t('nodes.action_condition.desc')}
                 </p>
 
                 {/* Input A */}
                 <div className="space-y-1">
-                  <label className="text-[11px] font-medium text-muted">Input A (Variable / Value):</label>
+                  <label className="text-[11px] font-medium text-muted">{t('inspector.logic_input_a')}:</label>
                   <input
+                    data-graph-editor
                     type="text"
                     value={selectedNode.data.input_a ?? ''}
                     onChange={(e) =>
@@ -426,7 +449,7 @@ export default function TelegramMockup({
 
                 {/* Operator */}
                 <div className="space-y-1">
-                  <label className="text-[11px] font-medium text-muted">Operator:</label>
+                  <label className="text-[11px] font-medium text-muted">{t('inspector.operator')}:</label>
                   <select
                     value={selectedNode.data.operator || '>='}
                     onChange={(e) =>
@@ -436,7 +459,7 @@ export default function TelegramMockup({
                   >
                     {['>=', '<=', '==', '!=', '>', '<', 'and', 'or'].map((o) => (
                       <option key={o} value={o}>
-                        {o}
+                        {o === 'and' ? t('inspector.operator_and') : o === 'or' ? t('inspector.operator_or') : o}
                       </option>
                     ))}
                   </select>
@@ -444,8 +467,9 @@ export default function TelegramMockup({
 
                 {/* Input B */}
                 <div className="space-y-1">
-                  <label className="text-[11px] font-medium text-muted">Input B (Variable / Value):</label>
+                  <label className="text-[11px] font-medium text-muted">{t('inspector.logic_input_b')}:</label>
                   <input
+                    data-graph-editor
                     type="text"
                     value={selectedNode.data.input_b ?? ''}
                     onChange={(e) =>
@@ -460,7 +484,7 @@ export default function TelegramMockup({
               {/* Condition Live Preview Box (Inside floating editor) */}
               <div className="p-4 rounded-2xl bg-surface-secondary/60 border border-border shadow-inner space-y-2">
                 <div className="text-[10px] uppercase font-bold text-muted tracking-wider">
-                  {t('mockup.preview_label') || 'Preview'}:
+                  {t('mockup.preview_label')}:
                 </div>
                 <div className="p-3 rounded-xl bg-surface border border-amber-500/30 text-center font-mono text-xs text-foreground shadow-xs">
                   <span className="text-purple-400 font-semibold">{selectedNode.data.input_a || 'A'}</span>{' '}
@@ -470,7 +494,7 @@ export default function TelegramMockup({
                   <span className="text-emerald-400 font-semibold">{selectedNode.data.input_b || 'B'}</span>
                 </div>
                 <div className="text-[10px] text-muted text-center">
-                  True branch executes if condition holds, otherwise False branch.
+                  {t('nodes.action_condition.preview_hint')}
                 </div>
               </div>
             </div>
@@ -509,10 +533,10 @@ export default function TelegramMockup({
                       <div dangerouslySetInnerHTML={{ __html: msg.text }} />
                     ) : msg.media_type && msg.media_type !== 'text' && msg.media_url ? (
                       <div className="flex flex-col gap-1.5">
-                        <span className="text-[11px] text-muted">[{msg.media_type.toUpperCase()}]</span>
+                        <span className="text-[11px] text-muted">[{t(`mockup.media_types.${msg.media_type}`)}]</span>
                         <img
                           src={msg.media_url}
-                          alt="media"
+                          alt={t('mockup.media_alt')}
                           className="max-h-40 rounded-xl object-cover"
                         />
                       </div>
@@ -554,17 +578,28 @@ export default function TelegramMockup({
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:0.2s]" />
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:0.4s]" />
                 <span className="text-[11px] ms-1">
-                  {selectedNode?.data?.media_type === 'photo'
-                    ? (t('mockup.uploading_photo') || 'Sending photo...')
-                    : selectedNode?.data?.media_type === 'video'
-                    ? (t('mockup.uploading_video') || 'Sending video...')
-                    : (t('mockup.typing') || 'Typing...')}
+                  {lastChatAction === 'upload_photo'
+                    ? (t('mockup.uploading_photo'))
+                    : lastChatAction === 'upload_video'
+                    ? (t('mockup.uploading_video'))
+                    : lastChatAction === 'record_voice'
+                    ? (t('mockup.recording_voice'))
+                    : lastChatAction === 'upload_document'
+                    ? (t('mockup.uploading_document'))
+                    : (t('mockup.typing'))}
                 </span>
               </div>
             )}
             <div ref={chatBottomRef} />
           </div>
 
+          {deliveredKeyboard.buttons.length > 0 && <div data-delivered-reply className="p-2 space-y-1 border-t border-border bg-surface-secondary">
+            {deliveredKeyboard.buttons.map((row, r) => <div key={r} className="flex gap-1">
+              {row.map((button, c) => <button key={c} type="button"
+                className="flex-1 rounded-lg border border-border bg-surface px-2 py-2 text-xs text-foreground"
+                onClick={() => sendSimulatorMessage(button.text, 'message')}>{button.text}</button>)}
+            </div>)}
+          </div>}
           {/* Quick Command Suggestions */}
           <div className="px-3 py-1.5 bg-surface-secondary/40 border-t border-border flex items-center gap-1.5 overflow-x-auto text-[11px]">
             <button
@@ -574,9 +609,9 @@ export default function TelegramMockup({
               /start
             </button>
             <button
-              onClick={() => setSimMessages([])}
+              onClick={() => { setSimMessages([]); setDeliveredKeyboard({ source: null, buttons: [] }); }}
               className="px-2 py-0.5 rounded-full bg-surface border border-border text-muted hover:text-foreground flex items-center gap-1 ms-auto"
-              title={t('mockup.clear_history') || 'Clear Chat History'}
+              title={t('mockup.clear_history')}
             >
               <RotateCcw size={10} />
               <span>{t('mockup.clear_chat')}</span>
@@ -603,17 +638,17 @@ export default function TelegramMockup({
                   setReplyMenuOpen(false);
                 }}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold transition-all shadow-sm active:scale-95"
-                title="Telegram Bot Commands Menu"
+                title={t('mockup.commands_menu')}
               >
                 <Menu size={13} />
-                <span>Menu</span>
+                <span>{t('mockup.menu')}</span>
               </button>
 
               {/* Telegram Commands Menu Popup */}
               {commandsMenuOpen && (
                 <div className="absolute bottom-12 start-0 w-64 bg-surface border border-border rounded-2xl shadow-2xl p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100">
                   <div className="px-2 py-1 text-[10px] font-bold text-muted uppercase tracking-wider border-b border-border flex items-center justify-between">
-                    <span>{t('mockup.bot_commands') || 'Bot Commands'}</span>
+                    <span>{t('mockup.bot_commands')}</span>
                     <span className="text-blue-400 font-mono text-[9px]">{flowCommands.length}</span>
                   </div>
                   <div className="max-h-48 overflow-y-auto space-y-0.5">
@@ -636,29 +671,12 @@ export default function TelegramMockup({
               )}
             </div>
 
-            {/* Reply Keyboard (+) Button */}
-            <button
-              type="button"
-              onClick={() => {
-                setReplyMenuOpen(!replyMenuOpen);
-                setCommandsMenuOpen(false);
-              }}
-              className={`p-2 rounded-xl border transition-all ${
-                replyMenuOpen
-                  ? 'bg-accent text-accent-foreground border-accent'
-                  : 'bg-surface-secondary text-muted hover:text-foreground border-border'
-              }`}
-              title={t('mockup.open_reply_keyboard') || 'Open Reply Keyboard Buttons'}
-            >
-              <Plus size={13} className={replyMenuOpen ? 'rotate-45 transition-transform' : 'transition-transform'} />
-            </button>
-
             <input
               type="text"
               value={simInput}
               onChange={(e) => setSimInput(e.target.value)}
               placeholder={t('mockup.type_message')}
-              className="flex-1 bg-surface-secondary border border-border rounded-xl px-3 py-1.5 text-xs text-foreground placeholder:text-field-placeholder outline-none focus:border-accent"
+              className="flex-1 min-w-0 bg-surface-secondary border border-border rounded-xl px-3 py-1.5 text-xs text-foreground placeholder:text-field-placeholder outline-none focus:border-accent"
             />
             <button
               type="submit"
@@ -668,38 +686,6 @@ export default function TelegramMockup({
               <Send size={13} className={dir === 'rtl' ? 'rotate-180' : ''} />
             </button>
           </form>
-
-          {/* Reply Keyboard Builder: Rendered below or inside container like real Telegram keyboard */}
-          {replyMenuOpen && (
-            <ReplyKeyboardBuilder
-              rows={
-                localReplyButtons.length > 0
-                  ? localReplyButtons
-                  : selectedNode?.data?.keyboard_type === 'reply' && Array.isArray(selectedNode?.data?.buttons) && selectedNode.data.buttons.length > 0
-                  ? selectedNode.data.buttons
-                  : replyKeyboardButtons.length > 0
-                  ? replyKeyboardButtons
-                  : []
-              }
-              onChange={(newRows) => {
-                setLocalReplyButtons(newRows);
-                // Target node: currently selected node, or the first message node in the flow
-                const targetNode =
-                  selectedNode && selectedNode.type === 'action_send_message'
-                    ? selectedNode
-                    : nodes.find((n) => n.type === 'action_send_message');
-
-                if (targetNode && onUpdateNodeData) {
-                  onUpdateNodeData(targetNode.id, {
-                    ...targetNode.data,
-                    keyboard_type: 'reply',
-                    buttons: newRows
-                  });
-                }
-              }}
-              onClose={() => setReplyMenuOpen(false)}
-            />
-          )}
         </div>
       )}
     </div>

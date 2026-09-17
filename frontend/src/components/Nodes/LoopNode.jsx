@@ -38,21 +38,21 @@ export default function LoopNode({ id, data, selected }) {
         </div>
         <div>
           <div className="text-[10px] uppercase font-bold tracking-wider text-violet-500">
-            {t('nodes.action_loop.category') || 'Loop / Flow'}
+            {t('nodes.action_loop.category')}
           </div>
           <div className="text-xs font-semibold text-foreground">
-            {t('nodes.action_loop.name') || 'Loop (Repeat)'}
+            {t('nodes.action_loop.name')}
           </div>
         </div>
         <span className="ms-auto text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-500 border border-violet-500/20 font-mono">
-          {count}x
+          {count}×
         </span>
       </div>
 
       <div className="p-3 space-y-2.5 nodrag nopan">
         <div className="flex items-center justify-between gap-2">
           <label className="text-[11px] font-medium text-muted">
-            {t('inspector.loop_count') || 'Repeat Count'}:
+            {t('inspector.loop_count')}:
           </label>
           <input
             type="number"
@@ -66,7 +66,7 @@ export default function LoopNode({ id, data, selected }) {
 
         <div className="space-y-1">
           <label className="text-[11px] font-medium text-muted block">
-            {t('inspector.iteration_var') || 'Iteration Counter Variable'}:
+            {t('inspector.iteration_var')}:
           </label>
           <input
             type="text"

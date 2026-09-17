@@ -111,7 +111,21 @@ EOF
 # 9. Launch Decoupled Docker Services
 echo -e "${CYAN}------------------------------------------------------------------------------${NC}"
 echo -e "${BLUE}🚀 Building and starting MyBot containers with Docker Compose...${NC}"
-docker compose -f deploy/docker-compose.yml up -d --build
+if docker compose version &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker compose"
+elif command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker-compose"
+else
+    echo -e "${YELLOW}📦 Docker Compose not found. Installing docker-compose-plugin...${NC}"
+    apt-get update && apt-get install -y docker-compose-plugin || apt-get install -y docker-compose || true
+    if docker compose version &> /dev/null; then
+        DOCKER_COMPOSE_CMD="docker compose"
+    else
+        DOCKER_COMPOSE_CMD="docker-compose"
+    fi
+fi
+
+$DOCKER_COMPOSE_CMD -f deploy/docker-compose.yml up -d --build
 
 # 10. Output Success Banner
 echo ""

@@ -42,10 +42,10 @@ export default function ConditionNode({ id, data, selected }) {
         </div>
         <div>
           <div className="text-[10px] uppercase font-bold tracking-wider text-amber-500">
-            {t('nodes.action_condition.category') || 'Logic / Branch'}
+            {t('nodes.action_condition.category')}
           </div>
           <div className="text-xs font-semibold text-foreground">
-            {t('nodes.action_condition.name') || 'Branch (If / Else)'}
+            {t('nodes.action_condition.name')}
           </div>
         </div>
       </div>
@@ -57,7 +57,7 @@ export default function ConditionNode({ id, data, selected }) {
             type="text"
             value={a}
             onChange={(e) => update('input_a', e.target.value)}
-            placeholder={t('inspector.input_a') || 'Input A ($balance)'}
+            placeholder={t('inspector.input_a')}
             className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-xs font-mono text-foreground outline-none focus:border-amber-500"
           />
           <select
@@ -67,7 +67,7 @@ export default function ConditionNode({ id, data, selected }) {
           >
             {OPERATORS.map((o) => (
               <option key={o} value={o}>
-                {o}
+                {o === 'and' ? t('inspector.operator_and') : o === 'or' ? t('inspector.operator_or') : o}
               </option>
             ))}
           </select>
@@ -75,7 +75,7 @@ export default function ConditionNode({ id, data, selected }) {
             type="text"
             value={b}
             onChange={(e) => update('input_b', e.target.value)}
-            placeholder={t('inspector.input_b') || 'Input B (100)'}
+            placeholder={t('inspector.input_b')}
             className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-xs font-mono text-foreground outline-none focus:border-amber-500"
           />
         </div>
@@ -87,7 +87,7 @@ export default function ConditionNode({ id, data, selected }) {
         <div className="relative flex items-center justify-end gap-2 pr-5 py-1 rounded-md bg-emerald-500/5">
           <CheckCircle2 size={13} className="text-emerald-500" />
           <span className="text-[10px] font-bold text-emerald-500 tracking-wider">
-            {t('nodes.action_condition.true_branch') || 'TRUE'}
+            {t('nodes.action_condition.true_branch')}
           </span>
           <Handle
             type="source"
@@ -102,7 +102,7 @@ export default function ConditionNode({ id, data, selected }) {
         <div className="relative flex items-center justify-end gap-2 pr-5 py-1 rounded-md bg-rose-500/5">
           <XCircle size={13} className="text-rose-500" />
           <span className="text-[10px] font-bold text-rose-500 tracking-wider">
-            {t('nodes.action_condition.false_branch') || 'FALSE'}
+            {t('nodes.action_condition.false_branch')}
           </span>
           <Handle
             type="source"

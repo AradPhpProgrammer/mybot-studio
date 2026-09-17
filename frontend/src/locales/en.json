@@ -34,13 +34,24 @@
     "locked_node_hint": "Enable the User Database toggle in bot settings to use this node",
     "locked_badge": "Disabled in Settings",
     "enable_db_node_hint": "Enable User Variables Database in bot settings to use this node.",
-    "seconds": "seconds"
+    "seconds": "seconds",
+    "flow_save_error": "Could not save the flow.",
+    "flow_commands_sync_error": "Flow saved, but Telegram commands could not be synced.",
+    "minimize": "Minimize",
+    "id": "ID",
+    "version_label": "v{version}",
+    "unexpected_error": "Something went wrong",
+    "retry": "Try again",
+    "unknown_error": "Unknown error"
   },
   "sidebar": {
     "profiles": "Profiles",
     "plugins": "Plugins",
     "settings": "Settings",
-    "toggle_menu": "Toggle Menu"
+    "toggle_menu": "Toggle Menu",
+    "actions": "Action",
+    "triggers": "Trigger",
+    "admin": "Admin"
   },
   "login": {
     "title": "MyBot Studio Login",
@@ -49,7 +60,8 @@
     "password_label": "Password",
     "login_btn": "Sign In",
     "default_hint": "Default credentials: admin / admin1234",
-    "logging_in": "Signing in..."
+    "logging_in": "Signing in...",
+    "error": "Invalid username or password."
   },
   "settings": {
     "title": "Platform Settings",
@@ -88,7 +100,9 @@
     "save_proxy_btn": "Save Proxy Settings",
     "proxy_test_success": "Connection successful ({latency} ms)",
     "proxy_test_failed": "Connection failed",
-    "proxy_saved": "Proxy settings saved successfully"
+    "proxy_saved": "Proxy settings saved successfully",
+    "font_sample": "ABC",
+    "credentials_saved": "Credentials updated successfully."
   },
   "navbar": {
     "bots_switch": "Select Bot",
@@ -103,7 +117,10 @@
     "bot_settings": "Bot Settings",
     "run_bot": "Run Bot",
     "stop_bot": "Stop Bot",
-    "running": "Running"
+    "running": "Running",
+    "theme_toggle": "Switch theme",
+    "pin": "Pin toolbar",
+    "unpin": "Unpin toolbar"
   },
   "dashboard": {
     "welcome": "Welcome to MyBot Engine",
@@ -115,10 +132,13 @@
     "token_placeholder": "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ...",
     "verifying_token": "Verifying with Telegram...",
     "bot_verified": "Bot Profile Created",
-        "open_studio": "Open Studio Canvas",
-        "upload_photo": "Upload bot profile photo",
-        "refresh_bot": "Sync info from BotFather"
-      },
+    "open_studio": "Open Studio Canvas",
+    "upload_photo": "Upload Telegram profile photo",
+    "refresh_bot": "Sync info from BotFather",
+    "token_error": "Token verification failed.",
+    "created_success": "Bot profile created successfully with starter flow.",
+    "bot_id": "Bot ID"
+  },
   "canvas": {
     "quick_add": "Quick Add Node (Space or Right Click)",
     "categories": {
@@ -130,7 +150,9 @@
     },
     "add_node_here": "Add Node Here",
     "delete_node": "Delete Node",
-    "delete_connection": "Delete Connection"
+    "delete_connection": "Delete Connection",
+    "collapse_node": "Collapse node",
+    "expand_node": "Expand node"
   },
   "nodes": {
     "trigger_start": {
@@ -159,12 +181,49 @@
     },
     "action_edit_message": {
       "name": "Edit Message",
-      "desc": "Updates previous message content on callback.",
+      "desc": "Updates an earlier sent message when a button is tapped.",
       "category": "Message",
-      "text_placeholder": "New message text (type $ for variables)",
+      "text_placeholder": "New message text / caption (type $ for variables)",
       "connected": "Will edit the message sent by the connected node above.",
       "not_connected": "Connect this node after a Send Message node to edit that message. Without text it will warn the user.",
       "buttons_count": "Buttons: "
+    },
+    "action_keyboard": {
+      "name": "Keyboard / Buttons",
+      "desc": "Attaches inline glass or reply keyboard buttons to the message.",
+      "category": "Message",
+      "connected_send": "Attached to Send Message — buttons will be sent with that message.",
+      "connected_edit": "Attached to Edit Message — will update the keyboard of that message.",
+      "must_follow_message": "This node must be connected directly after a Send Message or Edit Message node!",
+      "inline": "Inline keyboard",
+      "reply": "Reply keyboard",
+      "mode": "Keyboard type",
+      "mode_hint": "Choose explicitly: text-only buttons can belong to either type. Telegram accepts one keyboard type per message.",
+      "new_button": "Button {number}",
+      "callback_id": "Callback ID",
+      "callback_placeholder": "btn_id",
+      "color": "Button color",
+      "color_primary": "Blue (primary)",
+      "color_success": "Green (success)",
+      "color_danger": "Red (danger)",
+      "color_default": "Default",
+      "delete_button": "Delete button",
+      "reorder": "Move selected button",
+      "move_left": "Move left",
+      "move_right": "Move right",
+      "move_up": "Move to previous row",
+      "move_down": "Move to next row",
+      "move_new_row": "Move to new row",
+      "moved": "Moved to row {row}, column {column}.",
+      "add_first": "Add first button",
+      "drag_hint": "Drag the grip to move left/right or between rows. Use the arrow controls without dragging.",
+      "drag_button": "Move button {number}, row {row}",
+      "button_text": "Text of button {number}, row {row}",
+      "button_placeholder": "Button",
+      "add_to_row": "Add button to row {row}",
+      "add_row": "Add row",
+      "drop_new_row": "Drop here to create a new row",
+      "reply_requires_send": "Reply keyboards require a Send Message node; Telegram cannot add them when editing a message."
     },
     "action_answer_callback": {
       "name": "Answer Callback (Alert)",
@@ -176,20 +235,22 @@
       "desc": "Branches execution flow based on condition.",
       "category": "Logic / Branch",
       "true_branch": "TRUE",
-      "false_branch": "FALSE"
+      "false_branch": "FALSE",
+      "preview_hint": "The true branch runs if the condition holds; otherwise the false branch runs."
     },
     "action_set_variable": {
       "name": "Set User Variable",
       "desc": "Stores dynamic user state in database."
     },
     "math_add": {
-          "name": "Math: Add (+)",
-          "desc": "Adds Input A and Input B, writes result to Output Variable."
-        },
-        "math": {
-          "name": "Math Calculation (A ⊕ B)",
-          "desc": "Calculates Input A ⊕ Input B with +, -, ×, or ÷ and writes result to Output Variable."
-        },
+      "name": "Math: Add (+)",
+      "desc": "Adds Input A and Input B, writes result to Output Variable."
+    },
+    "math": {
+      "category": "Math & Formula",
+      "name": "Math Calculation (A ⊕ B)",
+      "desc": "Calculates A ⊕ B using +, −, × or ÷ and stores the result in a variable."
+    },
     "math_subtract": {
       "name": "Math: Subtract (-)",
       "desc": "Subtracts Input B from Input A, writes result to Output Variable."
@@ -214,9 +275,6 @@
       "name": "Loop / Repeat",
       "desc": "Repeats connected action N times with iteration index.",
       "category": "Loop / Flow"
-    },
-    "math": {
-      "category": "Math & Formula"
     }
   },
   "inspector": {
@@ -248,7 +306,20 @@
     "style_success": "Success (Green)",
     "style_danger": "Danger (Red)",
     "loop_count": "Repeat Count",
-    "iteration_var": "Iteration Counter Variable"
+    "iteration_var": "Iteration Counter Variable",
+    "media_url": "Media URL or Telegram file_id",
+    "url": "URL",
+    "callback_preview": "Callback: {value}",
+    "url_preview": "URL: {value}",
+    "operation_set": "Set (=)",
+    "operation_add": "Add (+)",
+    "operation_subtract": "Subtract (−)",
+    "operation_toggle": "Toggle",
+    "operator": "Operator",
+    "logic_input_a": "Input A (Variable / Value)",
+    "logic_input_b": "Input B (Variable / Value)",
+    "operator_and": "AND",
+    "operator_or": "OR"
   },
   "mockup": {
     "title": "Telegram Live Chat Preview",
@@ -284,7 +355,10 @@
       "default": "Default",
       "primary": "Primary (Blue)",
       "success": "Success (Green)",
-      "danger": "Danger (Red)"
+      "danger": "Danger (Red)",
+      "suggest_title": "Variables and callbacks",
+      "edit_hint": "Click a button to edit its identifier, color or text.",
+      "add_to_row": "Add button to this row"
     },
     "rich_toolbar": {
       "bold": "Bold",
@@ -292,7 +366,9 @@
       "spoiler": "Spoiler",
       "quote": "Expandable Quote",
       "code": "Code",
-      "table": "Monospace Table"
+      "table": "Monospace Table",
+      "underline": "Underline",
+      "strikethrough": "Strikethrough"
     },
     "edit_tab": "Edit",
     "test_tab": "Test Chat",
@@ -303,7 +379,16 @@
       "video": "Video",
       "voice": "Voice",
       "document": "Document"
-    }
+    },
+    "start_description": "Start the bot / main menu",
+    "custom_command": "Custom command",
+    "sample_text": "Sample text",
+    "menu": "Menu",
+    "commands_menu": "Telegram bot commands menu",
+    "media_alt": "Message media",
+    "table_template": "<pre>\n┌──────────────┬──────────────┐\n│ Column 1     │ Column 2     │\n├──────────────┼──────────────┤\n│ Item A       │ 10,000       │\n│ Item B       │ 25,000       │\n└──────────────┴──────────────┘\n</pre>",
+    "recording_voice": "Recording voice…",
+    "uploading_document": "Sending document…"
   },
   "plugins": {
     "no_plugins": "No plugins found.",
@@ -329,7 +414,7 @@
     "sync_commands": "Auto-Sync Slash Commands",
     "sync_commands_desc": "Automatically register flow slash commands (/start, /help) to Telegram menu via setMyCommands",
     "flow_transfer": "Template Builder (Export / Import)",
-        "flow_transfer_desc": "Build a reusable flow template and export it to JSON, or import an existing template.",
+    "flow_transfer_desc": "Build a reusable flow template and export it to JSON, or import an existing template.",
     "cf_worker": "Cloudflare Worker Reverse Proxy URL",
     "custom_proxy": "HTTP / SOCKS5 Proxy",
     "tracked_fields": {
@@ -337,9 +422,9 @@
       "db_desc": "Each bot has its own SQLite file. Only checked fields are saved to keep the database fast and clean.",
       "subscribers": "subscriber(s)",
       "required": "required",
-      "profile_photo_title": "Bot Profile Photo",
-      "profile_photo_upload": "Upload Profile Photo",
-      "profile_photo_desc": "Click the circle to upload a custom avatar for this bot.",
+      "profile_photo_title": "Telegram profile photo",
+      "profile_photo_upload": "Upload Telegram profile photo",
+      "profile_photo_desc": "Default bot profile photo. Upload another image to change it in Telegram.",
       "description_label": "What can this bot do? (Description)",
       "description_placeholder": "Shown on the empty chat screen before user presses /start",
       "fields": {
@@ -357,30 +442,95 @@
         "total_starts": "Total Starts Count",
         "custom_variables": "Flow Set-Variables (NoSQL)"
       }
-    }
+    },
+    "username_label": "Bot username",
+    "name_placeholder": "My Telegram bot",
+    "username_placeholder": "Bot username without @",
+    "token_label": "Telegram bot token",
+    "token_placeholder": "Leave blank to keep the current token",
+    "show_token": "Show",
+    "hide_token": "Hide",
+    "bio_placeholder": "Short bio shown in the bot profile",
+    "enable_database": "Enable user variables database",
+    "enable_database_desc": "Enable Set User Variable nodes and persistent data storage.",
+    "upload_error": "Could not upload the photo.",
+    "save_error": "Could not save bot settings.",
+    "username_read_only_hint": "Read-only · Telegram",
+    "token_verification_failed": "This token was not accepted by Telegram. Verify it with @BotFather and check your connection, then save again.",
+    "telegram_sync_warning": "Saved locally, but Telegram could not update the bot profile. Check the connection or proxy settings.",
+    "bot_id_note": "Numeric ID · read-only · Telegram"
   },
-      "variables": {
-        "first_name": "User's first name",
-        "last_name": "User's last name (optional)",
-        "username": "User's @username (no @)",
-        "user_id": "Numeric Telegram user ID",
-        "chat_id": "The current chat identifier",
-        "message_id": "The triggering message identifier",
-        "callback_data": "Tapped button callback value",
-        "payload": "Raw text / command content",
-        "date": "Event timestamp (unix)",
-        "balance": "User balance variable (if set)",
-        "ref_code": "Referral / deep-link code",
-        "referrer": "Who invited this user",
-        "inviter_id": "Telegram ID of inviter",
-        "deep_link": "Payload after /start deep link",
-        "bot_name": "Bot display name",
-        "bot_username": "Bot @username",
-        "starts": "Number of times user started",
-        "last_seen": "Timestamp of last interaction",
-        "day": "Current day (0-6)",
-        "hour": "Current hour (0-23)",
-        "now": "Current unix timestamp",
-        "random": "Random number 0-1"
-      }
-    }
+  "variables": {
+    "first_name": "User's first name",
+    "last_name": "User's last name (optional)",
+    "username": "User's @username (no @)",
+    "user_id": "Numeric Telegram user ID",
+    "chat_id": "The current chat identifier",
+    "message_id": "The triggering message identifier",
+    "callback_data": "Tapped button callback value",
+    "payload": "Raw text / command content",
+    "date": "Event timestamp (unix)",
+    "balance": "User balance variable (if set)",
+    "ref_code": "Referral / deep-link code",
+    "referrer": "Who invited this user",
+    "inviter_id": "Telegram ID of inviter",
+    "deep_link": "Payload after /start deep link",
+    "bot_name": "Bot display name",
+    "bot_username": "Bot @username",
+    "starts": "Number of times user started",
+    "last_seen": "Timestamp of last interaction",
+    "day": "Current day (0-6)",
+    "hour": "Current hour (0-23)",
+    "now": "Current unix timestamp",
+    "random": "Random number 0-1"
+  },
+  "variable_ui": {
+    "title": "Variables",
+    "keys": "↑↓ Navigate · Enter Insert · Esc Close",
+    "escape_hint": "Type $$ for a literal dollar sign."
+  },
+  "languages": {
+    "en": "English",
+    "fa": "فارسی",
+    "ar": "العربية",
+    "ru": "Русский"
+  },
+  "defaults": {
+    "help": "Help",
+    "welcome": "Hello! Welcome to MyBot Studio.",
+    "action_confirmed": "Action confirmed."
+  },
+  "api_errors": {
+    "credentials": "Failed to update credentials",
+    "bots": "Failed to load bots",
+    "create_bot": "Failed to create bot",
+    "bot": "Failed to load bot",
+    "bot_settings": "Failed to update bot settings",
+    "bot_toggle": "Failed to toggle bot",
+    "bot_delete": "Failed to delete bot",
+    "commands": "Failed to sync commands",
+    "flow": "Failed to load flow",
+    "flow_save": "Failed to save flow",
+    "catalog": "Failed to load catalog",
+    "export": "Export failed",
+    "import": "Import failed",
+    "refresh": "Refresh failed",
+    "upload": "Upload failed",
+    "schema": "Failed to load schema",
+    "simulation": "Simulation failed",
+    "plugins": "Failed to load plugins",
+    "plugin_toggle": "Failed to toggle plugin",
+    "languages": "Failed to load languages",
+    "language_upload": "Language upload failed",
+    "fonts": "Failed to load fonts",
+    "system": "Failed to get system info",
+    "update_check": "Update check failed",
+    "update": "Update failed",
+    "proxy": "Failed to load proxy config",
+    "proxy_save": "Failed to save proxy config",
+    "proxy_test": "Proxy test failed",
+    "non_json": "Expected JSON from the API (status {status}, Content-Type: {type}). Check that the backend is running on port 8000 and that Vite/nginx forwards /api/ to it.",
+    "status": "Request failed with status {status}",
+    "invalid_json": "The API returned invalid JSON."
+  }
+}

@@ -44,10 +44,10 @@ export default function EditMessageNode({ id, data, selected }) {
         </div>
         <div>
           <div className="text-[10px] uppercase font-bold tracking-wider text-orange-500">
-            {t('nodes.action_edit_message.category') || 'Message'}
+            {t('nodes.action_edit_message.category')}
           </div>
           <div className="text-xs font-semibold text-foreground">
-            {t('nodes.action_edit_message.name') || 'Edit Message'}
+            {t('nodes.action_edit_message.name')}
           </div>
         </div>
       </div>
@@ -66,15 +66,14 @@ export default function EditMessageNode({ id, data, selected }) {
             <>
               <Link2 size={12} className="mt-0.5 shrink-0" />
               <span>
-                {t('nodes.action_edit_message.connected') || 'Will edit the message sent by the connected node above.'}
+                {t('nodes.action_edit_message.connected')}
               </span>
             </>
           ) : (
             <>
               <AlertCircle size={12} className="mt-0.5 shrink-0" />
               <span>
-                {t('nodes.action_edit_message.not_connected') ||
-                  'Connect this node after a Send Message node to edit that message. Without text it will warn the user.'}
+                {t('nodes.action_edit_message.not_connected')}
               </span>
             </>
           )}
@@ -85,7 +84,7 @@ export default function EditMessageNode({ id, data, selected }) {
           value={text}
           onChange={(v) => update('text', v)}
           rows={3}
-          placeholder={t('nodes.action_edit_message.text_placeholder') || 'New message text / caption (type $ for variables)'}
+          placeholder={t('nodes.action_edit_message.text_placeholder')}
           className="w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] text-foreground leading-relaxed outline-none focus:border-orange-500 resize-none"
         />
 
@@ -103,9 +102,9 @@ export default function EditMessageNode({ id, data, selected }) {
                     <div
                       key={bIdx}
                       className={`flex-1 py-1 px-1.5 rounded-md border text-[10px] text-center truncate ${c}`}
-                      title={btn.callback_data ? `Callback: ${btn.callback_data}` : btn.url ? `URL: ${btn.url}` : ''}
+                      title={btn.callback_data ? t('inspector.callback_preview', { value: btn.callback_data }) : btn.url ? t('inspector.url_preview', { value: btn.url }) : ''}
                     >
-                      {btn.text || 'Button'}
+                      {btn.text || t('inspector.button_text')}
                     </div>
                   );
                 })}

@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react';
+import { createGraphHistory, persistGraphSnapshot, graphHistoryShortcut, isSaveShortcut, isTextEditing, cursorToFlowPosition } from './graphHistory.js';
+import { migrateEmbeddedKeyboards } from './components/Nodes/keyboardGraph.mjs';
 import {
   applyNodeChanges,
   applyEdgeChanges,
-  addEdge,
-  useNodesState,
-  useEdgesState
+  addEdge
 } from '@xyflow/react';
 
 import LoginPage from './components/Auth/LoginPage';
@@ -45,11 +45,34 @@ export default function App() {
   });
   const [loadingBots, setLoadingBots] = useState(true);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [selectedNode, setSelectedNode] = useState(null);
-  const [isDirty, setIsDirty] = useState(false);
+  const [history] = useState(() => createGraphHistory());
+  const { nodes, edges } = useSyncExternalStore(history.subscribe, history.getSnapshot);
+  const isDirty = useSyncExternalStore(history.subscribe, history.isDirty);
+  const setNodes = useCallback(updater => history.update(graph => ({ ...graph,
+    nodes: typeof updater === 'function' ? updater(graph.nodes) : updater,
+  })), [history]);
+  const setEdges = useCallback(updater => history.update(graph => ({ ...graph,
+    edges: typeof updater === 'function' ? updater(graph.edges) : updater,
+  })), [history]);
+  const [selectedNodeId, setSelectedNodeId] = useState(null);
+  const selectedNode = nodes.find(node => node.id === selectedNodeId) || null;
   const [isSaving, setIsSaving] = useState(false);
+  const [flowReady, setFlowReady] = useState(false);
+  const flowSession = useRef(0);
+  const loadedBotId = useRef(null);
+  const savingRequest = useRef(null);
+  const flowInstance = useRef(null);
+  const beginDrag = useCallback(() => history.begin(), [history]);
+  const endDrag = useCallback(() => history.end(), [history]);
+  const clearFlow = useCallback(() => {
+    flowSession.current += 1;
+    loadedBotId.current = null;
+    savingRequest.current = null;
+    setIsSaving(false);
+    setFlowReady(false);
+    setSelectedNodeId(null);
+    history.reset();
+  }, [history]);
 
   // Modals & Overlays
   const [quickSearchOpen, setQuickSearchOpen] = useState(false);
@@ -75,17 +98,23 @@ export default function App() {
 
   // Load Bot Flow
   const loadBotFlow = useCallback(async (botId) => {
+    clearFlow();
+    const session = flowSession.current;
     try {
       const flow = await api.getFlow(botId);
+      if (session !== flowSession.current) return;
       if (flow) {
-        setNodes(flow.nodes || []);
-        setEdges(flow.edges || []);
-        setIsDirty(false);
+        const migrated = migrateEmbeddedKeyboards(flow);
+        history.reset({ nodes: migrated.nodes, edges: migrated.edges });
+        history.markSaved({ nodes: flow.nodes || [], edges: flow.edges || [] });
+        loadedBotId.current = String(botId);
+        setFlowReady(true);
       }
     } catch (e) {
+      // Never permit a failed load to overwrite the remote flow with an empty graph.
       console.error(e);
     }
-  }, [setNodes, setEdges]);
+  }, [clearFlow, history]);
 
   // Load Bots on mount or auth change
   const loadBots = useCallback(async () => {
@@ -103,7 +132,8 @@ export default function App() {
         if (found) {
           setCurrentBot(found);
           localStorage.setItem('mybot_current_bot', JSON.stringify(found));
-        } else if (list.length > 0) {
+        } else {
+          clearFlow();
           // If stored bot ID was deleted, gracefully return to dashboard
           setView('dashboard');
           setCurrentBot(null);
@@ -117,7 +147,7 @@ export default function App() {
     } finally {
       setLoadingBots(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, clearFlow]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -143,6 +173,7 @@ export default function App() {
   };
 
   const handleBackToDashboard = () => {
+    clearFlow();
     setView('dashboard');
     setCurrentBot(null);
     localStorage.setItem('mybot_view', 'dashboard');
@@ -152,6 +183,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    clearFlow();
     localStorage.removeItem('mybot_token');
     localStorage.removeItem('mybot_view');
     localStorage.removeItem('mybot_current_bot');
@@ -177,32 +209,23 @@ export default function App() {
   };
 
   // Node & Edge Handlers
-  const handleNodesChange = useCallback(
-    (changes) => {
-      onNodesChange(changes);
-      setIsDirty(true);
-    },
-    [onNodesChange]
-  );
-
-  const handleEdgesChange = useCallback(
-    (changes) => {
-      onEdgesChange(changes);
-      setIsDirty(true);
-    },
-    [onEdgesChange]
-  );
+  const handleNodesChange = useCallback(changes => {
+    history.update(graph => ({ ...graph, nodes: applyNodeChanges(changes, graph.nodes) }));
+  }, [history]);
+  const handleEdgesChange = useCallback(changes => {
+    history.update(graph => ({ ...graph, edges: applyEdgeChanges(changes, graph.edges) }));
+  }, [history]);
 
   const handleConnect = useCallback(
     (params) => {
       setEdges((eds) => addEdge({ ...params, animated: true }, eds));
-      setIsDirty(true);
+
     },
     [setEdges]
   );
 
   const handleNodeClick = useCallback((_, node) => {
-    setSelectedNode(node);
+    setSelectedNodeId(node.id);
   }, []);
 
   const handleUpdateNodeData = (nodeId, newData) => {
@@ -214,29 +237,33 @@ export default function App() {
         return node;
       })
     );
-    setSelectedNode((prev) => (prev?.id === nodeId ? { ...prev, data: newData } : prev));
-    setIsDirty(true);
+
+
   };
 
   // Save Flow
-  const handleSaveFlow = async () => {
-    if (!currentBot) return;
+  const handleSaveFlow = useCallback(async () => {
+    if (!currentBot || !flowReady || view !== 'studio' || savingRequest.current ||
+        loadedBotId.current !== String(currentBot.id)) return;
+    const session = flowSession.current;
+    const request = {};
+    savingRequest.current = request;
     setIsSaving(true);
+    const isCurrent = () => session === flowSession.current;
     try {
-      await api.saveFlow(currentBot.id, {
-        name: 'Main Flow',
-        nodes,
-        edges,
-        viewport: { x: 0, y: 0, zoom: 1 }
+      const result = await persistGraphSnapshot({ history, botId: currentBot.id, isCurrent,
+        saveFlow: (id, data) => api.saveFlow(id, data),
+        syncCommands: id => api.syncCommands(id),
       });
-      await api.syncCommands(currentBot.id);
-      setIsDirty(false);
-    } catch (e) {
-      console.error('Error saving flow:', e);
+      if (isCurrent() && result.status === 'save-error') window.alert(t('common.flow_save_error'));
+      if (isCurrent() && result.status === 'sync-error') window.alert(t('common.flow_commands_sync_error'));
     } finally {
-      setIsSaving(false);
+      if (savingRequest.current === request) {
+        savingRequest.current = null;
+        setIsSaving(false);
+      }
     }
-  };
+  }, [currentBot, flowReady, view, history, t]);
 
   // Export / Import
   const handleExportFlow = async () => {
@@ -262,13 +289,14 @@ export default function App() {
       await api.importFlow(currentBot.id, file);
       loadBotFlow(currentBot.id);
     } catch (err) {
-      alert(t('common.template_error', { error: err.message }) || `Error importing flow: ${err.message}`);
+      alert(t('common.template_error', { error: err.message }));
     }
   };
 
   // Quick Search Add Node
   const handleAddNode = (def, pos) => {
-    const position = pos || pendingNodePos || { x: quickSearchPos.x || 300, y: quickSearchPos.y || 200 };
+    const position = pendingNodePos || pos || (flowInstance.current
+      ? cursorToFlowPosition(flowInstance.current.screenToFlowPosition, quickSearchPos) : { x: 0, y: 0 });
     const newNode = {
       id: `node_${Date.now()}`,
       type: def.type,
@@ -276,9 +304,9 @@ export default function App() {
       data: { ...def.data }
     };
     setNodes((nds) => [...nds, newNode]);
-    setSelectedNode(newNode);
+    setSelectedNodeId(newNode.id);
     setPendingNodePos(null);
-    setIsDirty(true);
+
   };
 
   // Add node at specific flow position (right-click)
@@ -292,14 +320,14 @@ export default function App() {
   const handleDeleteNode = (nodeId) => {
     setNodes((nds) => nds.filter((n) => n.id !== nodeId));
     setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
-    if (selectedNode?.id === nodeId) setSelectedNode(null);
-    setIsDirty(true);
+    if (selectedNodeId === nodeId) setSelectedNodeId(null);
+
   };
 
   // Delete a single edge
   const handleDeleteEdge = (edgeId) => {
     setEdges((eds) => eds.filter((e) => e.id !== edgeId));
-    setIsDirty(true);
+
   };
 
   // Prevent closing / reloading if there are unsaved flow changes
@@ -307,7 +335,7 @@ export default function App() {
     const handleBeforeUnload = (e) => {
       if (isDirty) {
         e.preventDefault();
-        e.returnValue = 'You have unsaved flow changes.';
+        e.returnValue = '';
         return e.returnValue;
       }
     };
@@ -315,34 +343,37 @@ export default function App() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty]);
 
-  // Keyboard Shortcuts (Ctrl+S for save, Ctrl+Shift+N for quick search, Ctrl+Z/Y for undo/redo)
+  // Capture before graph fields stop propagation; unrelated forms retain native undo.
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      if (view !== 'studio') return;
+      if (isSaveShortcut(e)) {
         e.preventDefault();
         handleSaveFlow();
-      } else if (e.ctrlKey && e.shiftKey && (e.key === 'n' || e.key === 'N')) {
-        if (view === 'studio') {
-          e.preventDefault();
-          setQuickSearchPos({ x: window.innerWidth / 2 - 100, y: window.innerHeight / 2 - 100 });
-          setQuickSearchOpen(true);
-        }
-      } else if (
-        e.code === 'Space' && 
-        view === 'studio' && 
-        document.activeElement.tagName !== 'INPUT' && 
-        document.activeElement.tagName !== 'TEXTAREA'
-      ) {
+        return;
+      }
+      if (botSettingsOpen || pluginsModalOpen || quickSearchOpen) return;
+      const action = graphHistoryShortcut(e);
+      if (action) {
         e.preventDefault();
-        setQuickSearchPos({ x: window.innerWidth / 2 - 100, y: window.innerHeight / 2 - 100 });
+        e.stopPropagation();
+        history[action]();
+        return;
+      }
+      if ((e.ctrlKey && e.shiftKey && (e.code === 'KeyN' || e.key?.toLowerCase() === 'n')) ||
+          (e.code === 'Space' && !isTextEditing(e.target))) {
+        e.preventDefault();
+        setPendingNodePos(null);
+        setQuickSearchPos({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
         setQuickSearchOpen(true);
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [view, nodes, edges, currentBot, isDirty]);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [view, history, handleSaveFlow, botSettingsOpen, pluginsModalOpen, quickSearchOpen]);
 
-  const handlePaneContextMenu = (e) => {
+  const handlePaneContextMenu = (e, flowPos) => {
+    setPendingNodePos(flowPos || null);
     // e may be either a native event or a plain {x,y} point from Canvas
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
     const x = typeof e === 'object' && 'clientX' in e ? e.clientX : (e?.x ?? window.innerWidth / 2);
@@ -352,7 +383,7 @@ export default function App() {
   };
 
   const handleDeleteBot = async (botId) => {
-    const confirmMsg = t('common.confirm_delete_bot') || 'Are you sure you want to delete this bot? All its flows and user data will be deleted.';
+    const confirmMsg = t('common.confirm_delete_bot');
     if (window.confirm(confirmMsg)) {
       await api.deleteBot(botId);
       if (currentBot?.id === botId) {
@@ -368,7 +399,7 @@ export default function App() {
       await api.refreshBotInfo(bot.id);
       await loadBots();
     } catch (e) {
-      window.alert(e.message || 'Failed to refresh bot info');
+      window.alert(e.message || t('common.error'));
     }
   };
 
@@ -378,7 +409,7 @@ export default function App() {
       await loadBots();
       return res;
     } catch (e) {
-      window.alert(e.message || 'Failed to upload photo');
+      window.alert(e.message || t('common.error'));
       throw e;
     }
   };
@@ -429,7 +460,7 @@ export default function App() {
             onBackToDashboard={handleBackToDashboard}
             onSaveFlow={handleSaveFlow}
             isDirty={isDirty}
-            isSaving={isSaving}
+            isSaving={isSaving || !flowReady}
             onExportFlow={handleExportFlow}
             onImportFlow={handleImportFlow}
             onOpenPlugins={() => setPluginsModalOpen(true)}
@@ -441,7 +472,13 @@ export default function App() {
           />
 
           {/* Infinite DAG Canvas */}
+          <div data-graph-editor className="w-full h-full">
           <Canvas
+            onInit={instance => { flowInstance.current = instance; }}
+            onNodeDragStart={beginDrag}
+            onNodeDragStop={endDrag}
+            onSelectionDragStart={beginDrag}
+            onSelectionDragStop={endDrag}
             nodes={nodes}
             edges={edges}
             onNodesChange={handleNodesChange}
@@ -455,11 +492,13 @@ export default function App() {
             theme={theme}
             dirty={isDirty}
           />
+          </div>
 
           {/* Floating Draggable Resizable Telegram Mockup & Live Simulator */}
           <TelegramMockup
             currentBot={currentBot}
             selectedNode={selectedNode}
+            edges={edges}
             onUpdateNodeData={handleUpdateNodeData}
             nodes={nodes}
           />

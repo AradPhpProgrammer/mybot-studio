@@ -29,7 +29,7 @@ export default function RichTextToolbar({ onApplyTag, onInsertTable }) {
         type="button"
         onClick={() => onApplyTag('u')}
         className="p-1.5 rounded hover:bg-surface-tertiary text-foreground/80 hover:text-foreground transition-colors"
-        title="Underline"
+        title={t('mockup.rich_toolbar.underline')}
       >
         <Underline size={13} />
       </button>
@@ -38,7 +38,7 @@ export default function RichTextToolbar({ onApplyTag, onInsertTable }) {
         type="button"
         onClick={() => onApplyTag('s')}
         className="p-1.5 rounded hover:bg-surface-tertiary text-foreground/80 hover:text-foreground transition-colors"
-        title="Strikethrough"
+        title={t('mockup.rich_toolbar.strikethrough')}
       >
         <Strikethrough size={13} />
       </button>

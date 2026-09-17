@@ -1,4 +1,5 @@
 import React from 'react';
+import { translate as t } from '../../locales/translate.js';
 
 /**
  * Prevents a render error (e.g. a transient data shape issue in a node/user flow)
@@ -12,7 +13,7 @@ export default class ErrorBoundary extends React.Component {
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true, message: String(error?.message || error || 'Unknown error') };
+    return { hasError: true, message: String(error?.message || error || t('common.unknown_error')) };
   }
 
   componentDidCatch(error, info) {
@@ -49,7 +50,7 @@ export default class ErrorBoundary extends React.Component {
             }}
           >
             <div style={{ fontSize: 26, marginBottom: 8 }}>⚠️</div>
-            <div style={{ fontWeight: 700, marginBottom: 8 }}>Something went wrong</div>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>{t('common.unexpected_error')}</div>
             <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 16, wordBreak: 'break-word' }}>
               {this.state.message}
             </div>
@@ -65,7 +66,7 @@ export default class ErrorBoundary extends React.Component {
                 fontWeight: 600,
               }}
             >
-              Reload
+              {t('common.retry')}
             </button>
           </div>
         </div>

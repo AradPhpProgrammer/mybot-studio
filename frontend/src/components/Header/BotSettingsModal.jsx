@@ -10,31 +10,36 @@ import {
   Database,
   ChevronDown,
   ChevronUp,
-  Sliders
+  Sliders,
+  Eye,
+  EyeOff,
+  Key
 } from 'lucide-react';
 import { useI18n } from '../../locales/i18n';
 import { api } from '../../services/api';
 
 const CANDIDATE_FIELDS = [
-  { key: 'telegram_id', label_en: 'Numeric Telegram ID', label_fa: 'شناسه عددی تلگرام', default: true, required: true },
-  { key: 'chat_id', label_en: 'Chat ID', label_fa: 'شناسه چت', default: true, required: true },
-  { key: 'first_name', label_en: 'First Name', label_fa: 'نام کوچک', default: true, required: false },
-  { key: 'start_date', label_en: 'First Start Date', label_fa: 'تاریخ اولین استارت', default: true, required: false },
-  { key: 'username', label_en: 'Telegram @Username', label_fa: 'نام کاربری (@username)', default: false, required: false },
-  { key: 'last_name', label_en: 'Last Name', label_fa: 'نام خانوادگی', default: false, required: false },
-  { key: 'language_code', label_en: 'Language Code', label_fa: 'کد زبان تلگرام', default: false, required: false },
-  { key: 'balance', label_en: 'User Balance / Credits', label_fa: 'موجودی حساب کاربر', default: false, required: false },
-  { key: 'ref_code', label_en: 'Referral / Deep-Link Code', label_fa: 'کد معرف / لینک ورودی', default: false, required: false },
-  { key: 'inviter_id', label_en: 'Inviter Telegram ID', label_fa: 'شناسه معرف', default: false, required: false },
-  { key: 'last_seen', label_en: 'Last Activity Date', label_fa: 'تاریخ آخرین فعالیت', default: false, required: false },
-  { key: 'total_starts', label_en: 'Total Starts Count', label_fa: 'شمارنده تعداد استارت', default: false, required: false },
-  { key: 'custom_variables', label_en: 'Flow Set-Variables (NoSQL)', label_fa: 'متغیرهای سفارشی فلو', default: false, required: false },
+  { key: 'telegram_id', default: true, required: true },
+  { key: 'chat_id', default: true, required: true },
+  { key: 'first_name', default: true, required: false },
+  { key: 'start_date', default: true, required: false },
+  { key: 'username', default: false, required: false },
+  { key: 'last_name', default: false, required: false },
+  { key: 'language_code', default: false, required: false },
+  { key: 'balance', default: false, required: false },
+  { key: 'ref_code', default: false, required: false },
+  { key: 'inviter_id', default: false, required: false },
+  { key: 'last_seen', default: false, required: false },
+  { key: 'total_starts', default: false, required: false },
+  { key: 'custom_variables', default: true, required: false },
 ];
 
 export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, onExportFlow, onImportFlow }) {
-  const { t, lang } = useI18n();
+  const { t, dir } = useI18n();
 
   const [name, setName] = useState('');
+  const [token, setToken] = useState('');
+  const [showToken, setShowToken] = useState(false);
   const [bio, setBio] = useState('');
   const [description, setDescription] = useState('');
   const [isMiniapp, setIsMiniapp] = useState(false);
@@ -45,14 +50,15 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
   const [cfWorkerUrl, setCfWorkerUrl] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [failedPhotoUrl, setFailedPhotoUrl] = useState('');
 
   // Database tracking settings
   const [dbMenuOpen, setDbMenuOpen] = useState(false);
-  const [trackedFields, setTrackedFields] = useState(['telegram_id', 'chat_id', 'first_name', 'start_date']);
+  const [trackedFields, setTrackedFields] = useState(() => CANDIDATE_FIELDS.filter((f) => f.default).map((f) => f.key));
   const [dbFileName, setDbFileName] = useState('');
   const [subscribersCount, setSubscribersCount] = useState(0);
-  // Master toggle: enable the flow-variables / user database feature. Off by default.
-  const [enableUserDb, setEnableUserDb] = useState(false);
+  // One editable state for both controls; the saved master flag is authoritative on load.
+  const enableUserDb = trackedFields.includes('custom_variables');
 
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -61,8 +67,20 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
   const exportInputRef = useRef(null);
 
   useEffect(() => {
-    if (bot) {
+    // Reset transient dialog state only on the open transition, never on a bot-content
+    // change while the dialog stays open (a save can update the bot and set a warning).
+    if (isOpen) {
+      setErrorMsg('');
+      setSavedSuccess(false);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (bot && isOpen) {
       setName(bot.name || '');
+      setToken('');
+      setShowToken(false);
       const s = bot.settings || {};
       setBio(s.bio || '');
       setDescription(s.description || '');
@@ -72,27 +90,31 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
       setSyncCommands(s.sync_commands_automatically ?? false);
       setCustomProxy(s.custom_proxy || '');
       setCfWorkerUrl(s.cf_worker_url || '');
-      setPhotoUrl(s.photo_url || bot.photo_url || '');
-      setEnableUserDb(Boolean(s.enable_user_database));
-
-      const currentTracked = Array.isArray(s.tracked_user_fields) && s.tracked_user_fields.length > 0
+      setPhotoUrl(s.photo_url || bot.photo_url || '/default-bot.png');
+      setFailedPhotoUrl('');
+      const currentTracked = Array.isArray(s.tracked_user_fields)
         ? s.tracked_user_fields
-        : ['telegram_id', 'chat_id', 'first_name', 'start_date'];
-      setTrackedFields(currentTracked);
+        : CANDIDATE_FIELDS.filter((f) => f.default).map((f) => f.key);
+      // Legacy tracked lists omitted custom_variables even when the feature was on.
+      // Only an explicit false master flag disables it; preserve all other choices.
+      setTrackedFields([
+        ...currentTracked.filter((key) => key !== 'custom_variables'),
+        ...(s.enable_user_database !== false ? ['custom_variables'] : [])
+      ]);
 
-      // Fetch per-bot DB info
+      // Schema is informational only: never replace editable settings with a late response.
+      setDbFileName('');
+      setSubscribersCount(0);
       api.getBotDbSchema?.(bot.id)
         .then((info) => {
-          if (info) {
+          if (info && !cancelled) {
             if (info.database_file) setDbFileName(info.database_file);
             if (typeof info.subscribers_count === 'number') setSubscribersCount(info.subscribers_count);
-            if (Array.isArray(info.tracked_fields)) setTrackedFields(info.tracked_fields);
           }
         })
         .catch(() => {});
     }
-    setErrorMsg('');
-    setSavedSuccess(false);
+    return () => { cancelled = true; };
   }, [bot, isOpen]);
 
   if (!isOpen || !bot) return null;
@@ -104,15 +126,18 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
     setErrorMsg('');
     try {
       const res = await api.uploadBotAvatar(bot.id, file);
+      setFailedPhotoUrl('');
       setPhotoUrl(res.photo_url);
+      const { token: _token, ...safeBot } = bot;
+      const { token: _settingsToken, ...safeSettings } = bot.settings || {};
       const updated = {
-        ...bot,
+        ...safeBot,
         photo_url: res.photo_url,
-        settings: { ...bot.settings, photo_url: res.photo_url }
+        settings: { ...safeSettings, photo_url: res.photo_url }
       };
       onBotUpdated?.(updated);
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to upload photo');
+      setErrorMsg(err.message || t('bot_settings.upload_error'));
     } finally {
       setUploadingPhoto(false);
     }
@@ -132,6 +157,7 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
     try {
       const payload = {
         name: name.trim() || bot.name,
+        token: token.trim() || undefined,
         bio: bio.trim(),
         description: description.trim(),
         is_miniapp_enabled: isMiniapp,
@@ -145,21 +171,36 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
       };
 
       const res = await api.updateBotSettings(bot.id, payload);
+      // Replacement credentials are write-only: never return them to cached bot state.
+      const { token: _submittedToken, ...safePayload } = payload;
+      const { token: _oldToken, ...safeBot } = bot;
+      const { token: _oldSettingsToken, ...safeSettings } = bot.settings || {};
+      const { token: _responseToken, ...responseSettings } = res.settings || {};
       const updatedBot = {
-        ...bot,
+        ...safeBot,
         name: res.name || payload.name,
+        username: res.username || bot.username,
         photo_url: photoUrl,
-        settings: res.settings || { ...bot.settings, ...payload, photo_url: photoUrl }
+        settings: res.settings ? responseSettings : { ...safeSettings, ...safePayload, photo_url: photoUrl }
       };
 
+      setToken('');
       onBotUpdated?.(updatedBot);
+      if (Object.values(res.telegram_sync || {}).some((success) => success === false)) {
+        setErrorMsg(t('bot_settings.telegram_sync_warning'));
+        return;
+      }
       setSavedSuccess(true);
       setTimeout(() => {
         setSavedSuccess(false);
         onClose();
       }, 600);
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to update bot settings');
+      const diagnostics = {
+        bot_token_verification_failed: 'bot_settings.token_verification_failed',
+        bot_username_read_only: 'bot_settings.username_read_only_hint'
+      };
+      setErrorMsg(diagnostics[err.message] ? t(diagnostics[err.message]) : err.message || t('bot_settings.save_error'));
     } finally {
       setSaving(false);
     }
@@ -167,20 +208,21 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-      <div className="w-full max-w-lg bg-surface border border-border rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-150">
+      <div role="dialog" aria-modal="true" aria-labelledby="bot-settings-title" dir={dir} className="bot-settings-dialog w-full max-w-lg bg-surface border border-border rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-150">
         {/* Modal Header */}
         <div className="px-5 py-3.5 border-b border-border flex items-center justify-between bg-surface-secondary/50">
           <div className="flex items-center gap-2.5">
             <Sliders size={16} className="text-accent" />
             <div>
-              <h2 className="text-sm font-bold text-foreground">
-                {t('bot_settings.title') || 'Bot Settings'}
+              <h2 id="bot-settings-title" className="text-sm font-bold text-foreground">
+                {t('bot_settings.title')}
               </h2>
               <p className="text-[11px] text-muted font-mono">@{bot.username}</p>
             </div>
           </div>
           <button
             onClick={onClose}
+            aria-label={t('common.close')}
             className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-surface-secondary transition-colors"
           >
             <X size={16} />
@@ -188,9 +230,9 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
         </div>
 
         {/* Modal Body */}
-        <form onSubmit={handleSave} className="p-5 space-y-4 overflow-y-auto flex-1 text-foreground">
+        <form onSubmit={handleSave} className="bot-settings-form min-h-0 p-5 space-y-4 overflow-y-auto flex-1 text-foreground">
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-xs flex items-center gap-2">
+            <div role="alert" className="p-3 rounded-xl bg-danger/10 border border-danger/30 text-danger text-xs flex items-center gap-2">
               <AlertCircle size={15} className="shrink-0" />
               <span>{errorMsg}</span>
             </div>
@@ -199,19 +241,21 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
           {/* Telegram / Instagram Style Profile Photo Circle */}
           <div className="flex items-center gap-4 p-3 rounded-2xl bg-surface-secondary/40 border border-border">
             <div className="relative w-16 h-16 shrink-0">
-              {photoUrl ? (
+              <button type="button" className="rounded-full" disabled={uploadingPhoto}
+                onClick={() => fileInputRef.current?.click()}
+                aria-label={t('bot_settings.tracked_fields.profile_photo_upload')}>
+              {failedPhotoUrl !== "/default-bot.png" ? (
                 <img
-                  src={photoUrl}
-                  alt={name}
-                  onClick={() => fileInputRef.current?.click()}
+                  src={failedPhotoUrl === photoUrl || !photoUrl ? "/default-bot.png" : photoUrl}
+                  alt=""
+                  onError={(e) => setFailedPhotoUrl(e.currentTarget.getAttribute("src"))}
                   className="w-16 h-16 rounded-full object-cover border-2 border-border shadow-md cursor-pointer hover:opacity-80 transition-opacity"
-                  title="Click to change photo"
+                  title={t('bot_settings.tracked_fields.profile_photo_upload')}
                 />
               ) : (
                 <div
-                  onClick={() => fileInputRef.current?.click()}
                   className="w-16 h-16 rounded-full border-2 border-dashed border-border bg-surface-secondary flex items-center justify-center text-muted hover:border-accent hover:text-accent transition-colors cursor-pointer"
-                  title="Upload profile photo"
+                  title={t('bot_settings.tracked_fields.profile_photo_upload')}
                 >
                   {uploadingPhoto ? (
                     <Loader2 size={20} className="animate-spin text-accent" />
@@ -222,6 +266,7 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
                   )}
                 </div>
               )}
+              </button>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -232,40 +277,77 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
             </div>
             <div className="space-y-1">
               <div className="text-xs font-bold text-foreground">
-                {photoUrl ? (lang === 'fa' ? 'تصویر پروفایل ربات' : 'Bot Profile Photo') : (lang === 'fa' ? 'آپلود تصویر پروفایل' : 'Upload Profile Photo')}
+                {t(photoUrl ? 'bot_settings.tracked_fields.profile_photo_title' : 'bot_settings.tracked_fields.profile_photo_upload')}
               </div>
               <p className="text-[11px] text-muted leading-relaxed">
-                {lang === 'fa'
-                  ? 'برای تغییر یا ثبت لوگوی ربات روی دایره کلیک کنید.'
-                  : 'Click the circle to upload a custom avatar for this bot.'}
+                {t('bot_settings.tracked_fields.profile_photo_desc')}
               </p>
             </div>
           </div>
 
-          {/* Bot Name */}
+          {/* Shared label/control rows keep both scripts on the same baseline. */}
+          <div className="settings-identity-grid">
+            <div className="settings-field">
+              <label htmlFor="bot-display-name">{t('bot_settings.name_label')}</label>
+              <input id="bot-display-name" type="text" value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t('bot_settings.name_placeholder')}
+                className="settings-field-input" />
+            </div>
+            <div className="settings-field">
+              <label htmlFor="bot-username" className="flex items-center justify-between gap-1">
+                <span>{t('bot_settings.username_label')}</span>
+                <span id="bot-username-hint" className="text-[10px] text-muted">{t('bot_settings.username_read_only_hint')}</span>
+              </label>
+              <input id="bot-username" type="text" value={bot.username || ''} dir="ltr" readOnly
+                aria-describedby="bot-username-hint"
+                className="settings-field-input cursor-default" spellCheck={false} autoCapitalize="none" />
+            </div>
+            <div className="settings-field">
+              <label htmlFor="bot-telegram-id">{t('bot_settings.bot_id_note')}</label>
+              <input id="bot-telegram-id" type="text" value={bot.telegram_bot_id ?? ''} dir="ltr" readOnly
+                className="settings-field-input cursor-default" />
+            </div>
+          </div>
+
+          {/* Bot Token */}
           <div className="space-y-1">
-            <label className="text-xs font-medium text-foreground">
-              {t('bot_settings.name_label') || 'Bot Display Name'}
+            <label className="text-xs font-medium text-foreground flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <Key size={12} className="text-accent" />
+                <span>{t('bot_settings.token_label')}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowToken(!showToken)}
+                className="text-[10px] text-muted hover:text-foreground flex items-center gap-1 transition-colors"
+              >
+                {showToken ? <EyeOff size={11} /> : <Eye size={11} />}
+                <span>{t(showToken ? 'bot_settings.hide_token' : 'bot_settings.show_token')}</span>
+              </button>
             </label>
             <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="My Telegram Bot"
-              className="w-full px-3 py-2 rounded-xl bg-surface-secondary border border-border text-xs text-foreground outline-none focus:border-accent font-sans"
+              id="bot-token" aria-label={t('bot_settings.token_label')}
+              type={showToken ? 'text' : 'password'}
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder={t('bot_settings.token_placeholder')}
+              dir="ltr" autoComplete="new-password"
+              className="w-full px-3 py-2 rounded-xl bg-surface-secondary border border-border text-xs font-mono text-foreground outline-none focus:border-accent"
             />
           </div>
 
           {/* Bot Bio */}
           <div className="space-y-1">
             <label className="text-xs font-medium text-foreground">
-              {t('bot_settings.bio_label') || 'Bot Bio'}
+              {t('bot_settings.bio_label')}
             </label>
             <input
               type="text"
+              id="bot-bio" aria-label={t('bot_settings.bio_label')}
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              placeholder="Short bio (appears in bot profile info)"
+              placeholder={t('bot_settings.bio_placeholder')}
               className="w-full px-3 py-2 rounded-xl bg-surface-secondary border border-border text-xs text-foreground outline-none focus:border-accent font-sans"
             />
           </div>
@@ -273,13 +355,14 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
           {/* Bot Description */}
           <div className="space-y-1">
             <label className="text-xs font-medium text-foreground">
-              {lang === 'fa' ? 'توضیحات قبل از استارت ربات' : 'What can this bot do? (Description)'}
+              {t('bot_settings.tracked_fields.description_label')}
             </label>
             <textarea
+              aria-label={t('bot_settings.tracked_fields.description_label')}
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Shown on the empty chat screen before user presses /start"
+              placeholder={t('bot_settings.tracked_fields.description_placeholder')}
               className="w-full px-3 py-2 rounded-xl bg-surface-secondary border border-border text-xs text-foreground outline-none focus:border-accent resize-none font-sans"
             />
           </div>
@@ -289,16 +372,17 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
             <button
               type="button"
               onClick={() => setDbMenuOpen(!dbMenuOpen)}
+              aria-expanded={dbMenuOpen}
               className="w-full px-4 py-3 flex items-center justify-between text-start hover:bg-surface-secondary/60 transition-colors"
             >
               <div className="flex items-center gap-2.5">
                 <Database size={15} className="text-accent" />
                 <div>
                   <div className="text-xs font-bold text-foreground">
-                    {lang === 'fa' ? 'تنظیمات دیتابیس اختصاصی و فیلدها' : 'Isolated Database & Tracked Fields'}
+                    {t('bot_settings.tracked_fields.db_title')}
                   </div>
                   <div className="text-[10px] text-muted font-mono">
-                    {dbFileName || `bot_${bot.id}.db`} • {subscribersCount} {lang === 'fa' ? 'مشترک' : 'subscriber(s)'}
+                    {dbFileName || `bot_${bot.id}.db`} • {subscribersCount} {t('bot_settings.tracked_fields.subscribers')}
                   </div>
                 </div>
               </div>
@@ -317,19 +401,17 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
                     <Database size={15} className={enableUserDb ? 'text-accent' : 'text-muted'} />
                     <div>
                       <div className="text-xs font-bold text-foreground">
-                        {lang === 'fa' ? 'فعال‌سازی دیتابیس متغیرهای کاربر (فلو)' : 'Enable User Variables Database (Flow)'}
+                        {t('bot_settings.enable_database')}
                       </div>
                       <div className="text-[11px] text-muted leading-relaxed">
-                        {lang === 'fa'
-                          ? 'این تیک را روشن کنید تا نود «تنظیم متغیر کاربر» و ذخیره‌سازی داده در دسترس باشد.'
-                          : 'Turn this on to enable Set User Variable nodes and data persistence.'}
+                        {t('bot_settings.enable_database_desc')}
                       </div>
                     </div>
                   </div>
                   <input
                     type="checkbox"
                     checked={enableUserDb}
-                    onChange={(e) => setEnableUserDb(e.target.checked)}
+                    onChange={() => toggleField('custom_variables', false)}
                     className="rounded border-border accent-accent w-4 h-4 shrink-0"
                   />
                 </label>
@@ -338,17 +420,13 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
                   <div className="flex items-center gap-1.5 text-[11px] text-muted">
                     <ChevronUp size={12} className="text-accent" />
                     <span>
-                      {lang === 'fa'
-                        ? 'نود «تنظیم متغیر کاربر» در لیست نودها تا زمانی که این تیک روشن نشود، غیرفعال و بلور نمایش داده می‌شود.'
-                        : 'The Set User Variable node stays disabled/blurred until this is enabled.'}
+                      {t('common.enable_db_node_hint')}
                     </span>
                   </div>
                 )}
 
                 <p className="text-[11px] text-muted leading-relaxed">
-                  {lang === 'fa'
-                    ? 'هر ربات دیتابیس لوکال مجزای خودش را دارد. فقط فیلدهایی که تیک خورده باشند ذخیره می‌شوند تا دیتابیس شلوغ و سنگین نشود.'
-                    : 'Each bot has its own SQLite file. Only checked fields are saved to keep the database fast and clean.'}
+                  {t('bot_settings.tracked_fields.db_desc')}
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
@@ -371,10 +449,10 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
                           className="rounded border-border accent-accent w-3.5 h-3.5"
                         />
                         <span className="flex-1 truncate">
-                          {((lang === 'fa' || lang === 'ar') ? f.label_fa : f.label_en) || f.label_en || f.label || f.key}
+                          {t(`bot_settings.tracked_fields.fields.${f.key}`)}
                           {f.required && (
                             <span className="text-[9px] text-accent ms-1 font-semibold">
-                              ({lang === 'fa' || lang === 'ar' ? 'الزامی' : 'required'})
+                              ({t('bot_settings.tracked_fields.required')})
                             </span>
                           )}
                         </span>
@@ -391,17 +469,18 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-xs font-bold text-foreground">
-                  {t('bot_settings.miniapp_toggle') || 'Telegram Mini App'}
+                  {t('bot_settings.miniapp_toggle')}
                 </div>
                 <p className="text-[11px] text-muted leading-relaxed">
-                  {t('bot_settings.miniapp_desc') || 'Enable interactive WebApp button in menu'}
+                  {t('bot_settings.miniapp_desc')}
                 </p>
               </div>
               <input
                 type="checkbox"
+                aria-label={t('bot_settings.miniapp_toggle')}
                 checked={isMiniapp}
                 onChange={(e) => setIsMiniapp(e.target.checked)}
-                className="w-4 h-4 accent-accent rounded cursor-pointer"
+                className="w-4 h-4 shrink-0 accent-accent rounded cursor-pointer"
               />
             </div>
             {isMiniapp && (
@@ -409,7 +488,7 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
                 type="url"
                 value={miniappUrl}
                 onChange={(e) => setMiniappUrl(e.target.value)}
-                placeholder="https://your-domain.com/webapp"
+                placeholder={t('bot_settings.miniapp_url')} dir="ltr" aria-label={t('bot_settings.miniapp_url')}
                 className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs text-foreground outline-none focus:border-accent font-mono"
               />
             )}
@@ -419,17 +498,18 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
           <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-secondary/40 border border-border">
             <div>
               <div className="text-xs font-bold text-foreground">
-                {t('bot_settings.auto_typing') || 'Auto Chat Action'}
+                {t('bot_settings.auto_typing')}
               </div>
               <p className="text-[11px] text-muted">
-                {t('bot_settings.auto_typing_desc') || 'Show typing / sending photo before answering'}
+                {t('bot_settings.auto_typing_desc')}
               </p>
             </div>
             <input
               type="checkbox"
-              checked={autoChatAction}
+              aria-label={t('bot_settings.auto_typing')}
+                checked={autoChatAction}
               onChange={(e) => setAutoChatAction(e.target.checked)}
-              className="w-4 h-4 accent-accent rounded cursor-pointer"
+              className="w-4 h-4 shrink-0 accent-accent rounded cursor-pointer"
             />
           </div>
 
@@ -437,24 +517,25 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
           <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-secondary/40 border border-border">
             <div>
               <div className="text-xs font-bold text-foreground">
-                {t('bot_settings.sync_commands') || 'Auto-Sync Slash Commands'}
+                {t('bot_settings.sync_commands')}
               </div>
               <p className="text-[11px] text-muted">
-                {t('bot_settings.sync_commands_desc') || 'Automatically register flow slash commands (/start, /help) to Telegram menu via setMyCommands'}
+                {t('bot_settings.sync_commands_desc')}
               </p>
             </div>
             <input
               type="checkbox"
-              checked={syncCommands}
+              aria-label={t('bot_settings.sync_commands')}
+                checked={syncCommands}
               onChange={(e) => setSyncCommands(e.target.checked)}
-              className="w-4 h-4 accent-accent rounded cursor-pointer"
+              className="w-4 h-4 shrink-0 accent-accent rounded cursor-pointer"
             />
           </div>
 
           {/* Export / Import Flow */}
           <div className="p-3 rounded-2xl bg-surface-secondary/40 border border-border space-y-2">
             <div className="text-xs font-bold text-foreground">
-                          {t('bot_settings.flow_transfer') || 'Template Builder (Export / Import)'}
+                          {t('bot_settings.flow_transfer')}
                         </div>
                         <div className="flex items-center gap-2">
                           <button
@@ -463,7 +544,7 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
                             className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-surface-secondary hover:bg-surface-tertiary border border-border text-foreground text-xs font-medium transition-all"
                           >
                             <Download size={14} />
-                            {t('navbar.export_json') || 'Export JSON'}
+                            {t('navbar.export_json')}
                           </button>
                           <button
                             type="button"
@@ -471,7 +552,7 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
                             className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-surface-secondary hover:bg-surface-tertiary border border-border text-foreground text-xs font-medium transition-all"
                           >
                             <Upload size={14} />
-                            {t('navbar.import_json') || 'Import JSON'}
+                            {t('navbar.import_json')}
                           </button>
                           <input
                             ref={exportInputRef}
@@ -482,7 +563,7 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
                           />
                         </div>
                         <p className="text-[10px] text-muted">
-                          {t('bot_settings.flow_transfer_desc') || 'Build a reusable flow template and export it to JSON, or import an existing template.'}
+                          {t('bot_settings.flow_transfer_desc')}
                         </p>
           </div>
 
@@ -493,7 +574,7 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
               onClick={onClose}
               className="px-4 py-2 rounded-xl text-xs text-muted hover:text-foreground font-medium"
             >
-              {t('common.cancel') || 'Cancel'}
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
@@ -503,15 +584,15 @@ export default function BotSettingsModal({ isOpen, onClose, bot, onBotUpdated, o
               {saving ? (
                 <>
                   <Loader2 size={14} className="animate-spin" />
-                  <span>{t('common.saving') || 'Saving...'}</span>
+                  <span>{t('common.saving')}</span>
                 </>
               ) : savedSuccess ? (
                 <>
                   <Check size={14} />
-                  <span>{t('common.saved') || 'Saved!'}</span>
+                  <span>{t('common.saved')}</span>
                 </>
               ) : (
-                <span>{t('common.save') || 'Save Settings'}</span>
+                <span>{t('common.save')}</span>
               )}
             </button>
           </div>

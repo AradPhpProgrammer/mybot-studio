@@ -52,10 +52,10 @@ export default function MathNode({ id, data, selected, type }) {
         </div>
         <div>
           <div className="text-[10px] uppercase font-bold tracking-wider opacity-80">
-            {t('nodes.math.category') || 'Math & Formula'}
+            {t('nodes.math.category')}
           </div>
           <div className="text-xs font-semibold text-foreground">
-            {t(`nodes.${type}.name`) || `${conf.sym} Math Calculation`}
+            {t(`nodes.${type}.name`)}
           </div>
         </div>
         <span className="ms-auto text-[10px] px-2 py-0.5 rounded-full bg-surface text-muted border border-border font-mono">
@@ -71,7 +71,7 @@ export default function MathNode({ id, data, selected, type }) {
             type="text"
             value={a}
             onChange={(e) => update('input_a', e.target.value)}
-            placeholder={t('inspector.input_a') || 'A ($score)'}
+            placeholder={t('inspector.input_a')}
             className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-xs font-mono text-foreground text-center outline-none focus:border-sky-500"
           />
 
@@ -93,7 +93,7 @@ export default function MathNode({ id, data, selected, type }) {
             type="text"
             value={b}
             onChange={(e) => update('input_b', e.target.value)}
-            placeholder={t('inspector.input_b') || 'B (10)'}
+            placeholder={t('inspector.input_b')}
             className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-xs font-mono text-foreground text-center outline-none focus:border-sky-500"
           />
         </div>
@@ -101,7 +101,7 @@ export default function MathNode({ id, data, selected, type }) {
         {/* Output Variable field */}
         <div className="space-y-1">
           <label className="text-[10px] font-medium text-muted block">
-            {t('inspector.output_variable') || 'Store Result in Variable'}:
+            {t('inspector.output_variable')}:
           </label>
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-mono text-muted">$</span>

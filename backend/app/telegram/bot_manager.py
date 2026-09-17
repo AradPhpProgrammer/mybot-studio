@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # STARTER TEMPLATE (English, identical for every language)
 # Uses trigger_command node with command='/start' — not the removed trigger_start.
+# The welcome buttons live in a dedicated action_keyboard node (node_8),
+# connected directly after the welcome send instead of embedded in its data.
 # ---------------------------------------------------------------------------
 STARTER_TEMPLATE_NODES = [
     {
@@ -42,7 +44,14 @@ STARTER_TEMPLATE_NODES = [
             "parse_mode": "HTML",
             "enable_auto_chat_action": True,
             "expandable_quote": False,
-            "has_spoiler": False,
+            "has_spoiler": False
+        }
+    },
+    {
+        "id": "node_8",
+        "type": "action_keyboard",
+        "position": {"x": 860, "y": 180},
+        "data": {
             "keyboard_type": "inline",
             "buttons": [
                 [
@@ -78,9 +87,7 @@ STARTER_TEMPLATE_NODES = [
             "media_url": "",
             "enable_auto_chat_action": True,
             "expandable_quote": True,
-            "has_spoiler": False,
-            "keyboard_type": "inline",
-            "buttons": []
+            "has_spoiler": False
         }
     },
     {
@@ -114,6 +121,7 @@ STARTER_TEMPLATE_NODES = [
 
 STARTER_TEMPLATE_EDGES = [
     {"id": "e1-2", "source": "node_1", "target": "node_2", "sourceHandle": "exec", "targetHandle": "exec"},
+    {"id": "e2-8", "source": "node_2", "target": "node_8", "sourceHandle": "exec", "targetHandle": "exec"},
     {"id": "e3-4", "source": "node_3", "target": "node_4", "sourceHandle": "exec", "targetHandle": "exec"},
     {"id": "e5-6", "source": "node_5", "target": "node_6", "sourceHandle": "exec", "targetHandle": "exec"},
     {"id": "e6-7", "source": "node_6", "target": "node_7", "sourceHandle": "exec", "targetHandle": "exec"}
@@ -270,6 +278,8 @@ class BotManager:
             "sync_commands_automatically": True,
             "is_online_verified": verif.get("is_online_verified", False),
             "is_miniapp_enabled": False,
+            "enable_user_database": True,
+            "tracked_user_fields": ["telegram_id", "chat_id", "first_name", "start_date", "custom_variables"],
             "bio": "",
             "description": ""
         }

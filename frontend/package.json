@@ -1,12 +1,13 @@
 {
   "name": "mybot-studio",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:i18n": "node --test src/locales/i18nAudit.test.mjs src/services/api.test.mjs"
   },
   "dependencies": {
     "@xyflow/react": "^12.3.6",

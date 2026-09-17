@@ -1,5 +1,10 @@
 import json
 import logging
+import uuid
+from io import BytesIO
+from PIL import Image, ImageOps, UnidentifiedImageError
+from aiogram import Bot
+from aiogram.types import BufferedInputFile, InputProfilePhotoStatic
 from pathlib import Path
 from typing import Any, Dict, List
 import aiosqlite
@@ -24,6 +29,7 @@ async def list_bots(db: aiosqlite.Connection = Depends(get_db)):
     bots = []
     for r in rows:
         s = json.loads(r["settings"]) if r["settings"] else {}
+        s.pop("token", None)
         bots.append({
             "id": r["id"],
             "name": r["name"],
@@ -31,7 +37,8 @@ async def list_bots(db: aiosqlite.Connection = Depends(get_db)):
             "telegram_bot_id": r["telegram_bot_id"],
             "is_active": bool(r["is_active"]),
             "settings": s,
-            "photo_url": s.get("photo_url"),
+            "photo_url": s.get("photo_url") or "/media/default-bot.png",
+            "default_photo_url": "/media/default-bot.png",
             "created_at": str(r["created_at"])
         })
     return bots
@@ -45,6 +52,16 @@ async def create_bot(req: BotCreateRequest, db: aiosqlite.Connection = Depends(g
             custom_proxy=req.custom_proxy,
             cf_worker_url=req.cf_worker_url
         )
+        new_bot["photo_url"] = "/media/default-bot.png"
+        try:
+            default_file = Path(__file__).resolve().parent.parent.parent / "uploads" / "default-bot.png"
+            with default_file.open("rb") as image:
+                photo = await upload_bot_avatar(new_bot["id"], UploadFile(filename="default.png", file=image), db)
+            new_bot["photo_url"] = photo["photo_url"]
+            new_bot["telegram_photo_synced"] = True
+        except Exception:
+            # Registration has committed: never report it as failed or invite duplicate creation.
+            new_bot["telegram_photo_synced"] = False
         return {"success": True, "bot": new_bot}
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -61,6 +78,7 @@ async def get_bot(bot_id: int, db: aiosqlite.Connection = Depends(get_db)):
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")
     settings_dict = json.loads(bot["settings"]) if bot["settings"] else {}
+    settings_dict.pop("token", None)
     return {
         "id": bot["id"],
         "name": bot["name"],
@@ -68,49 +86,96 @@ async def get_bot(bot_id: int, db: aiosqlite.Connection = Depends(get_db)):
         "telegram_bot_id": bot["telegram_bot_id"],
         "is_active": bool(bot["is_active"]),
         "settings": settings_dict,
-        "photo_url": settings_dict.get("photo_url"),
+        "photo_url": settings_dict.get("photo_url") or "/media/default-bot.png",
+        "default_photo_url": "/media/default-bot.png",
         "created_at": str(bot["created_at"])
     }
 
 @router.put("/{bot_id}/settings")
 async def update_bot_settings(bot_id: int, req: BotSettingsUpdate, db: aiosqlite.Connection = Depends(get_db)):
-    cursor = await db.execute("SELECT id, name, is_active, settings FROM bots WHERE id = ?", (bot_id,))
+    cursor = await db.execute("SELECT id, name, username, is_active, settings, token FROM bots WHERE id = ?", (bot_id,))
     bot = await cursor.fetchone()
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")
         
     current = json.loads(bot["settings"]) if bot["settings"] else {}
+    current.pop("token", None)
     update_data = req.model_dump(exclude_unset=True)
     
     name_val = update_data.pop("name", None)
+    username_val = update_data.pop("username", None)
+    token_val = update_data.pop("token", None)
     is_active_val = update_data.pop("is_active", None)
     current.update(update_data)
     
     new_name = name_val if name_val is not None else bot["name"]
+    # Bot API cannot rename usernames. Only verified Telegram identity may change it.
+    if username_val is not None and username_val != bot["username"]:
+        raise HTTPException(status_code=400, detail="bot_username_read_only")
+    new_username = bot["username"]
+    new_token = bot["token"]
+    new_bot_id = None
+
+    if token_val and token_val.strip() and token_val.strip() != bot["token"]:
+        clean_tok = token_val.strip()
+        try:
+            verif = await bot_manager.verify_token(
+                clean_tok,
+                current.get("cf_worker_url"),
+                current.get("custom_proxy"),
+                db=db
+            )
+        except Exception:
+            raise HTTPException(status_code=400, detail="bot_token_verification_failed") from None
+        if not verif.get("valid") or not verif.get("id") or not verif.get("username"):
+            raise HTTPException(status_code=400, detail="bot_token_verification_failed")
+        new_token = clean_tok
+        new_bot_id = verif["id"]
+        if verif.get("first_name") and name_val is None:
+            new_name = verif["first_name"]
+        new_username = verif["username"]
+
     new_active = int(is_active_val) if is_active_val is not None else bot["is_active"]
 
-    await db.execute(
-        "UPDATE bots SET name = ?, is_active = ?, settings = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        (new_name, new_active, json.dumps(current), bot_id)
-    )
+    if new_bot_id:
+        await db.execute(
+            "UPDATE bots SET name = ?, username = ?, token = ?, telegram_bot_id = ?, is_active = ?, settings = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (new_name, new_username, new_token, new_bot_id, new_active, json.dumps(current), bot_id)
+        )
+    else:
+        await db.execute(
+            "UPDATE bots SET name = ?, username = ?, is_active = ?, settings = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (new_name, new_username, new_active, json.dumps(current), bot_id)
+        )
     await db.commit()
 
-    # Sync name, bio, and description to Telegram Bot API in background / inline
+    # Local save succeeds independently of Telegram profile synchronization.
+    requested_presence = {key: value for key, value in {
+        "name": name_val, "bio": update_data.get("bio"),
+        "description": update_data.get("description")
+    }.items() if value is not None}
+    telegram_sync = {key: False for key in requested_presence}
     try:
-        cur_token = await db.execute("SELECT token FROM bots WHERE id = ?", (bot_id,))
-        t_row = await cur_token.fetchone()
-        if t_row and t_row["token"]:
-            await bot_manager.sync_bot_presence(
-                token=t_row["token"],
+        if new_token and requested_presence:
+            sync_result = await bot_manager.sync_bot_presence(
+                token=new_token,
                 settings_dict=current,
                 name=name_val,
                 bio=update_data.get("bio"),
                 description=update_data.get("description")
             )
-    except Exception as e:
-        logger.warning(f"Could not push presence to Telegram: {e}")
+            telegram_sync = {key: bool(sync_result.get(key)) for key in requested_presence}
+    except Exception:
+        logger.warning("Could not push presence to Telegram for bot %s", bot_id)
 
-    return {"success": True, "name": new_name, "is_active": bool(new_active), "settings": current}
+    return {
+        "success": True,
+        "telegram_sync": telegram_sync,
+        "name": new_name,
+        "username": new_username,
+        "is_active": bool(new_active),
+        "settings": current
+    }
 
 @router.post("/{bot_id}/toggle-active")
 async def toggle_bot_active(bot_id: int, db: aiosqlite.Connection = Depends(get_db)):
@@ -148,30 +213,58 @@ async def refresh_bot(bot_id: int, db: aiosqlite.Connection = Depends(get_db)):
 
 @router.post("/{bot_id}/avatar")
 async def upload_bot_avatar(bot_id: int, file: UploadFile = File(...), db: aiosqlite.Connection = Depends(get_db)) -> Dict[str, Any]:
-    cursor = await db.execute("SELECT settings FROM bots WHERE id = ?", (bot_id,))
+    """Upload a static JPG using Telegram setMyProfilePhoto, then save preview."""
+    cursor = await db.execute("SELECT token, settings FROM bots WHERE id = ?", (bot_id,))
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Bot not found")
-
-    ext = (file.filename or "").rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else "png"
-    if ext not in {"png", "jpg", "jpeg", "webp", "gif"}:
-        raise HTTPException(status_code=400, detail="Unsupported image type")
-
+    content = await file.read(10 * 1024 * 1024 + 1)
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Avatar must be at most 10 MB")
+    try:
+        with Image.open(BytesIO(content)) as image:
+            if image.width * image.height > 20_000_000:
+                raise ValueError("Image too large")
+            image = ImageOps.exif_transpose(image).convert("RGB")
+            image.thumbnail((2048, 2048))
+            encoded = BytesIO()
+            image.save(encoded, format="JPEG", quality=90)
+            content = encoded.getvalue()
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
+        raise HTTPException(status_code=400, detail="Invalid or oversized avatar image") from None
+    settings_dict = json.loads(row["settings"]) if row["settings"] else {}
+    proxy = None
+    try:
+        cursor = await db.execute("SELECT value FROM system_settings WHERE key = 'proxy_config'")
+        proxy_row = await cursor.fetchone()
+        if proxy_row and proxy_row["value"]:
+            proxy = json.loads(proxy_row["value"]).get("http_proxy")
+    except aiosqlite.OperationalError:
+        pass
+    session = bot_manager.get_api_session(settings_dict.get("cf_worker_url"), settings_dict.get("custom_proxy"), db_proxy_url=proxy)
+    bot = Bot(token=row["token"], session=session)
+    try:
+        success = await bot.set_my_profile_photo(photo=InputProfilePhotoStatic(
+            photo=BufferedInputFile(content, filename="avatar.jpg")), request_timeout=30)
+        if success is not True:
+            raise HTTPException(status_code=502, detail="Telegram did not accept the profile photo")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=502, detail="Telegram profile photo upload failed") from None
+    finally:
+        await bot.session.close()
     upload_dir = Path(__file__).resolve().parent.parent.parent / "uploads"
     upload_dir.mkdir(exist_ok=True)
-    fname = f"bot_{bot_id}.{ext}"
+    fname = f"bot_{bot_id}_{uuid.uuid4().hex}.jpg"
     dest = upload_dir / fname
-    content = await file.read()
     dest.write_bytes(content)
-
     photo_url = f"/media/{fname}"
-    settings_dict = json.loads(row["settings"]) if row["settings"] else {}
     settings_dict["photo_url"] = photo_url
     await db.execute("UPDATE bots SET settings = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                      (json.dumps(settings_dict), bot_id))
     await db.commit()
-
-    return {"status": "ok", "photo_url": photo_url}
+    return {"status": "ok", "photo_url": photo_url, "telegram_synced": True}
 
 
 @router.get("/{bot_id}/database-schema")

@@ -21,6 +21,7 @@ export default function BotsList({
   const [errorMessage, setErrorMessage] = useState('');
   const [refreshingId, setRefreshingId] = useState(null);
   const [uploadingId, setUploadingId] = useState(null);
+  const [failedPhotos, setFailedPhotos] = useState({});
   const fileInputRef = useRef(null);
 
   const handleVerifyAndCreate = async (e) => {
@@ -33,6 +34,7 @@ export default function BotsList({
     try {
       const res = await api.createBot(tokenInput.trim(), '', '');
       setVerifiedBot(res.bot);
+      if (res.bot?.telegram_photo_synced === false) setWarningMessage(t('bot_settings.telegram_sync_warning'));
       if (res.bot?.network_warning) {
         setWarningMessage(res.bot.network_warning);
       }
@@ -40,7 +42,7 @@ export default function BotsList({
       onBotCreated();
     } catch (err) {
       setIsVerifying(false);
-      setErrorMessage(err.message || 'Token verification failed.');
+      setErrorMessage(err.message || t('dashboard.token_error'));
     }
   };
 
@@ -83,7 +85,7 @@ export default function BotsList({
       <div className="text-center max-w-lg mb-8 z-10 space-y-2">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface/50 border border-border text-xs font-semibold text-foreground shadow-xs backdrop-blur-sm">
           <CheckCircle2 size={14} className="text-accent" />
-          <span>MyBot Studio v0.1.0</span>
+          <span>{t('common.app_name')} {t('common.version')}</span>
         </div>
         <h1 className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight">
           {t('dashboard.welcome')}
@@ -134,19 +136,20 @@ export default function BotsList({
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                       <div className="relative w-14 h-14 shrink-0">
-                        {bot.photo_url ? (
+                        {failedPhotos[bot.id] !== "/default-bot.png" ? (
                           <img
-                            src={bot.photo_url}
-                            alt={bot.name}
+                            src={!bot.photo_url || failedPhotos[bot.id] === bot.photo_url ? '/default-bot.png' : bot.photo_url}
+                            alt=""
+                            onError={(e) => { const src = e.currentTarget.getAttribute('src'); setFailedPhotos(prev => ({...prev, [bot.id]: src})); }}
                             className="w-full h-full rounded-full object-cover border border-border shadow-inner cursor-pointer"
                             onClick={(e) => { e.stopPropagation(); document.getElementById(`avatar-input-${bot.id}`)?.click(); }}
-                            title={t('dashboard.upload_photo') || 'Change Photo'}
+                            title={t('dashboard.upload_photo')}
                           />
                         ) : (
                           <label
                             htmlFor={`avatar-input-${bot.id}`}
                             className="w-14 h-14 rounded-full border-2 border-dashed border-border bg-surface-secondary/60 flex items-center justify-center text-muted group-hover:text-accent transition-colors cursor-pointer"
-                            title={t('dashboard.upload_photo') || 'Upload Photo'}
+                            title={t('dashboard.upload_photo')}
                             onClick={(e) => e.stopPropagation()}
                           >
                             {uploadingId === bot.id ? (
@@ -169,7 +172,7 @@ export default function BotsList({
                         <div className="text-xs text-muted font-mono">@{bot.username}</div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:!opacity-100 transition-opacity">
                       <button
                         onClick={(e) => handleRefresh(e, bot)}
                         disabled={refreshingId === bot.id}
@@ -189,7 +192,7 @@ export default function BotsList({
                   </div>
 
                   <div className="flex items-center justify-between pt-3 border-t border-border/40 text-[11px] text-muted font-mono">
-                    <span>ID: {bot.telegram_bot_id}</span>
+                    <span>{t('common.id')}: {bot.telegram_bot_id}</span>
                     <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-semibold flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                       {t('common.online')}
@@ -253,7 +256,7 @@ export default function BotsList({
                 </div>
                 <div className="space-y-1">
                   <h3 className="text-base font-bold text-foreground">{t('dashboard.bot_verified')}</h3>
-                  <p className="text-xs text-muted">Bot profile created successfully with starter flow.</p>
+                  <p className="text-xs text-muted">{t('dashboard.created_success')}</p>
                 </div>
                 {warningMessage && (
                   <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[11px] text-start leading-relaxed flex items-start gap-2">
@@ -262,9 +265,9 @@ export default function BotsList({
                   </div>
                 )}
                 <div className="p-4 rounded-2xl bg-surface-secondary border border-border text-start space-y-2 text-xs font-medium">
-                  <div className="flex justify-between"><span className="text-muted">Bot Name:</span><span className="font-bold text-foreground">{verifiedBot.name}</span></div>
-                  <div className="flex justify-between"><span className="text-muted">Username:</span><span className="font-bold text-foreground font-mono">@{verifiedBot.username}</span></div>
-                  <div className="flex justify-between"><span className="text-muted">Bot ID:</span><span className="font-mono text-foreground">{verifiedBot.telegram_bot_id}</span></div>
+                  <div className="flex justify-between"><span className="text-muted">{t('bot_settings.name_label')}:</span><span className="font-bold text-foreground">{verifiedBot.name}</span></div>
+                  <div className="flex justify-between"><span className="text-muted">{t('bot_settings.username_label')}:</span><span className="font-bold text-foreground font-mono">@{verifiedBot.username}</span></div>
+                  <div className="flex justify-between"><span className="text-muted">{t('dashboard.bot_id')}:</span><span className="font-mono text-foreground">{verifiedBot.telegram_bot_id}</span></div>
                 </div>
                 <button onClick={() => handleOpenBot(verifiedBot)} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-accent text-accent-foreground text-xs font-semibold shadow-lg hover:opacity-90 transition-opacity">
                   <span>{t('dashboard.open_studio')}</span>

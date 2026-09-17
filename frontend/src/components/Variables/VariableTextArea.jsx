@@ -2,6 +2,8 @@ import React, { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import en from '../../locales/en.json';
 import fa from '../../locales/fa.json';
+import ar from '../../locales/ar.json';
+import ru from '../../locales/ru.json';
 import { useI18n } from '../../locales/i18n';
 
 // Variable list is defined centrally in the locale JSON files (locales.*.variables)
@@ -13,7 +15,7 @@ const VARIABLE_ORDER = [
   'day', 'hour', 'now', 'random'
 ];
 
-const VARIABLE_DESCS = { en, fa };
+const VARIABLE_DESCS = { en, fa, ar, ru };
 const DEFAULT_LANG = 'en';
 
 export function buildVariables(lang = DEFAULT_LANG) {
@@ -65,7 +67,7 @@ export function renderHighlighted(text) {
  * while typing. Typing "$..." inserts "$first_name" etc.
  */
 export default function VariableTextArea({ value, onChange, placeholder, className, rows, onEnter, onSelect }) {
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
   const taRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState('');
@@ -210,10 +212,10 @@ export default function VariableTextArea({ value, onChange, placeholder, classNa
           >
             <div className="px-3 py-1.5 text-[10px] font-bold text-muted uppercase tracking-wider border-b border-border bg-surface-secondary/50 flex items-center justify-between">
               <span>
-                Variables <span className="text-orange-400 font-mono">$</span>
+                {t('variable_ui.title')} <span className="text-orange-400 font-mono">$</span>
               </span>
               <span className="text-[9px] font-normal text-muted/70">
-                ↑↓ Enter Esc
+                {t('variable_ui.keys')}
               </span>
             </div>
             <div id="var-suggest-list" className="max-h-52 overflow-y-auto p-1">
@@ -239,7 +241,7 @@ export default function VariableTextArea({ value, onChange, placeholder, classNa
               ))}
             </div>
             <div className="px-3 py-1 text-[9px] text-muted border-t border-border">
-              Tip: type <span className="font-mono text-orange-400">$$</span> for a literal dollar sign
+              {t('variable_ui.escape_hint')}
             </div>
           </div>,
           document.body

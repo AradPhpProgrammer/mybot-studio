@@ -1,5 +1,12 @@
 import asyncio
 import logging
+import json
+from pathlib import Path
+from contextlib import asynccontextmanager
+from weakref import WeakValueDictionary
+
+from aiogram.utils.text_decorations import html_decoration
+
 import aiosqlite
 from aiogram import Bot, Dispatcher, types
 from aiogram.enums import ParseMode
@@ -90,6 +97,221 @@ def build_keyboard_markup(markup: dict):
     return build_telegram_inline_keyboard(markup)
 
 
+class KeyboardStateStore:
+    """One durable source row per bot/chat, separate from studio/subscriber DBs.
+
+    Unknown legacy chats are deliberately not cleared: their source is unknown.
+    Connections are short-lived; no database is opened at module import time.
+    """
+
+    def __init__(self, db_path, bot_id: int):
+        self.db_path = str(db_path)
+        self.bot_id = bot_id
+        self._locks = WeakValueDictionary()
+
+    def lock(self, chat_id):
+        lock = self._locks.get(chat_id)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._locks[chat_id] = lock
+        return lock
+
+    @asynccontextmanager
+    async def connection(self):
+        async with aiosqlite.connect(self.db_path, timeout=30) as db:
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS keyboard_state (
+                    bot_id INTEGER NOT NULL,
+                    chat_id INTEGER NOT NULL,
+                    kb_type TEXT NOT NULL CHECK(kb_type IN ('reply', 'inline')),
+                    source_node_id TEXT,
+                    PRIMARY KEY (bot_id, chat_id)
+                )
+            """)
+            await db.execute("""CREATE TABLE IF NOT EXISTS keyboard_pending (
+                bot_id INTEGER NOT NULL, chat_id INTEGER NOT NULL,
+                payload TEXT NOT NULL, PRIMARY KEY (bot_id, chat_id))""")
+            yield db
+
+    async def get(self, chat_id):
+        async with self.connection() as db:
+            async with db.execute(
+                "SELECT kb_type, source_node_id FROM keyboard_state WHERE bot_id=? AND chat_id=?",
+                (self.bot_id, chat_id),
+            ) as cursor:
+                row = await cursor.fetchone()
+                return dict(zip(("kb_type", "source_node_id"), row)) if row else None
+
+    async def pending(self, chat_id):
+        async with self.connection() as db:
+            cursor = await db.execute("SELECT payload FROM keyboard_pending WHERE bot_id=? AND chat_id=?", (self.bot_id, chat_id))
+            row = await cursor.fetchone()
+            return json.loads(row[0]) if row else None
+
+    async def save_pending(self, chat_id, payload):
+        async with self.connection() as db:
+            await db.execute("DELETE FROM keyboard_state WHERE bot_id=? AND chat_id=?", (self.bot_id, chat_id))
+            await db.execute("INSERT OR REPLACE INTO keyboard_pending VALUES (?, ?, ?)",
+                             (self.bot_id, chat_id, json.dumps(payload)))
+            await db.commit()
+
+    async def clear_pending(self, chat_id):
+        async with self.connection() as db:
+            await db.execute("DELETE FROM keyboard_pending WHERE bot_id=? AND chat_id=?", (self.bot_id, chat_id))
+            await db.commit()
+
+    async def record(self, chat_id, kb_type, source_node_id):
+        async with self.connection() as db:
+            await db.execute("""
+                INSERT INTO keyboard_state (bot_id, chat_id, kb_type, source_node_id)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(bot_id, chat_id) DO UPDATE SET
+                    kb_type=excluded.kb_type, source_node_id=excluded.source_node_id
+            """, (self.bot_id, chat_id, kb_type, source_node_id))
+            await db.commit()
+
+
+class MessageSender:
+    """Shared message/callback delivery, including same-source keyboard changes."""
+
+    def __init__(self, state):
+        self.state = state
+        # Only the last delivery per chat, like last_sent_messages. Used for
+        # keyboard-only edits whose final content isn't repeated by the DAG.
+        self.last_content = {}
+
+    @staticmethod
+    def keyboard_type(markup):
+        if isinstance(markup, types.ReplyKeyboardMarkup) and any(markup.keyboard):
+            return "reply"
+        if isinstance(markup, types.InlineKeyboardMarkup) and any(markup.inline_keyboard):
+            return "inline"
+        return None
+
+    @staticmethod
+    async def send(bot, chat_id, content, markup):
+        text = content.get("text") or ""
+        media_type = content.get("media_type", "text")
+        url = content.get("media_url")
+        common = dict(chat_id=chat_id, parse_mode=ParseMode.HTML, reply_markup=markup)
+        if media_type in ("photo", "video") and url:
+            method = bot.send_photo if media_type == "photo" else bot.send_video
+            return await method(**common, **{media_type: url}, caption=text)
+        if text:
+            return await bot.send_message(**common, text=text)
+        return None
+
+    @staticmethod
+    async def edit(bot, chat_id, target_id, text, markup):
+        # Telegram edit endpoints accept inline markup only.
+        if isinstance(markup, types.ReplyKeyboardMarkup):
+            return False
+        common = dict(chat_id=chat_id, message_id=target_id, reply_markup=markup)
+        if text:
+            try:
+                await bot.edit_message_text(**common, text=text, parse_mode=ParseMode.HTML)
+                return True
+            except Exception as text_error:
+                try:
+                    await bot.edit_message_caption(**common, caption=text, parse_mode=ParseMode.HTML)
+                    return True
+                except Exception:
+                    logger.warning("Could not edit message %s: %s", target_id, text_error)
+        elif markup is not None:
+            try:
+                await bot.edit_message_reply_markup(**common)
+                return True
+            except Exception as error:
+                logger.warning("Could not edit message %s markup: %s", target_id, error)
+        return False
+
+    def target_content(self, chat_id, target_id, target_message):
+        if target_message is not None and target_message.message_id == target_id:
+            # html_text/html_caption preserve Telegram entities on copied text.
+            text = getattr(target_message, "html_text", None) or getattr(target_message, "html_caption", None)
+            if not text:
+                raw = getattr(target_message, "text", None) or getattr(target_message, "caption", None) or ""
+                text = html_decoration.quote(raw)
+            content = {"text": text}
+            if getattr(target_message, "photo", None):
+                content.update(media_type="photo", media_url=target_message.photo[-1].file_id)
+            elif getattr(target_message, "video", None):
+                content.update(media_type="video", media_url=target_message.video.file_id)
+            return content
+        cached = self.last_content.get(chat_id)
+        if cached and cached[0] == target_id:
+            return dict(cached[1])
+        return {}
+
+    async def deliver(self, bot, chat_id, message, last_sent_messages,
+                      target_id=None, target_message=None):
+        async with self.state.lock(chat_id):
+            pending = await self.state.pending(chat_id)
+            if pending and pending["message"] == message:
+                final_id = pending["message_id"]
+                last_sent_messages[chat_id] = final_id
+                self.last_content[chat_id] = (final_id, pending["content"])
+                await bot.edit_message_reply_markup(chat_id=chat_id, message_id=final_id,
+                    reply_markup=build_keyboard_markup(message.get("reply_markup")))
+                await self.state.record(chat_id, "inline", pending["source"])
+                await self.state.clear_pending(chat_id)
+                return final_id
+            markup = build_keyboard_markup(message.get("reply_markup"))
+            kb_type = self.keyboard_type(markup)
+            source = message.get("keyboard_node_id") or message.get("node_id") or None
+            source = str(source) if source is not None else None
+            previous = await self.state.get(chat_id) if kb_type else None
+            # Any inline delivery while a reply keyboard is active removes that
+            # keyboard: the outgoing final content itself carries ReplyKeyboardRemove
+            # (one visible message, no blank/notice), then the inline markup is
+            # attached to that same message. Edit endpoints cannot remove a reply
+            # keyboard, so the carrier is always a fresh send.
+            transition = (kb_type == "inline" and previous is not None
+                          and previous["kb_type"] == "reply")
+            is_edit = message.get("is_edit", False)
+            if target_id is None:
+                target_id = last_sent_messages.get(chat_id)
+            content = dict(message)
+            if is_edit:
+                content = self.target_content(chat_id, target_id, target_message)
+                if message.get("text"):
+                    content["text"] = message["text"]
+                if message.get("media_url"):
+                    content.update(media_type=message.get("media_type"), media_url=message["media_url"])
+
+            if transition:
+                # The FINAL content carries removal; never send a blank/notice.
+                # Media itself is a valid carrier, even without a caption.
+                sent = await self.send(bot, chat_id, content, types.ReplyKeyboardRemove(remove_keyboard=True))
+                if sent is None:
+                    raise ValueError("Cannot transition keyboard without final text or media")
+                last_sent_messages[chat_id] = sent.message_id
+                self.last_content[chat_id] = (sent.message_id, content)
+                await self.state.save_pending(chat_id, {"message": message, "content": content,
+                    "message_id": sent.message_id, "source": source})
+                await bot.edit_message_reply_markup(
+                    chat_id=chat_id, message_id=sent.message_id, reply_markup=markup)
+                final_id = sent.message_id
+            elif is_edit and target_id and await self.edit(
+                    bot, chat_id, target_id, message.get("text"), markup):
+                final_id = target_id
+            else:
+                # A reply keyboard cannot be edited onto a Telegram message.
+                # Send final content instead; preserve media on edit fallback.
+                sent = await self.send(bot, chat_id, content, markup)
+                if sent is None:
+                    return None
+                final_id = sent.message_id
+
+            last_sent_messages[chat_id] = final_id
+            self.last_content[chat_id] = (final_id, content)
+            # An unrelated inline message does not remove the active reply keyboard.
+            if kb_type and (kb_type == "reply" or transition or not previous or previous["kb_type"] != "reply"):
+                await self.state.record(chat_id, kb_type, source)
+            await self.state.clear_pending(chat_id)
+            return final_id
+
+
 async def run_bot_worker(bot_id: int, token: str, settings_dict: dict):
     """Runs long polling loop for a specific bot with exponential backoff on failure."""
     db_proxy = None
@@ -114,6 +336,8 @@ async def run_bot_worker(bot_id: int, token: str, settings_dict: dict):
 
     # Track last sent message ID per chat to enable action_edit_message on standard flows
     last_sent_messages = {}
+    state = KeyboardStateStore(Path(settings.DATABASE_PATH).with_name("keyboard_state.sqlite"), bot_id)
+    sender = MessageSender(state)
 
     @dp.message()
     async def on_message(message: types.Message):
@@ -137,71 +361,12 @@ async def run_bot_worker(bot_id: int, token: str, settings_dict: dict):
             )
 
             for m in res.get("messages", []):
-                text = m.get("text", "")
-                markup = m.get("reply_markup")
-                mtype = m.get("media_type", "text")
-                murl = m.get("media_url", "")
-                is_edit = m.get("is_edit", False)
-
-                reply_markup = build_keyboard_markup(markup)
-
-                if is_edit:
-                    target_msg_id = last_sent_messages.get(message.chat.id)
-                    if not target_msg_id and message.reply_to_message:
-                        target_msg_id = message.reply_to_message.message_id
-
-                    if target_msg_id and text:
-                        try:
-                            await bot.edit_message_text(
-                                chat_id=message.chat.id,
-                                message_id=target_msg_id,
-                                text=text,
-                                parse_mode=ParseMode.HTML,
-                                reply_markup=reply_markup
-                            )
-                            continue
-                        except Exception as edit_err:
-                            logger.warning(f"Could not edit message {target_msg_id}: {edit_err}. Falling back to send.")
-
-                    # If edit was not possible, send new message and record ID
-                    if text:
-                        sent = await bot.send_message(
-                            chat_id=message.chat.id,
-                            text=text,
-                            parse_mode=ParseMode.HTML,
-                            reply_markup=reply_markup
-                        )
-                        last_sent_messages[message.chat.id] = sent.message_id
-                    continue
-
-                # Standard sending
-                sent_msg = None
-                if mtype == "text" and text:
-                    sent_msg = await bot.send_message(
-                        chat_id=message.chat.id,
-                        text=text,
-                        parse_mode=ParseMode.HTML,
-                        reply_markup=reply_markup
-                    )
-                elif mtype == "photo" and murl:
-                    sent_msg = await bot.send_photo(
-                        chat_id=message.chat.id,
-                        photo=murl,
-                        caption=text,
-                        parse_mode=ParseMode.HTML,
-                        reply_markup=reply_markup
-                    )
-                elif mtype == "video" and murl:
-                    sent_msg = await bot.send_video(
-                        chat_id=message.chat.id,
-                        video=murl,
-                        caption=text,
-                        parse_mode=ParseMode.HTML,
-                        reply_markup=reply_markup
-                    )
-
-                if sent_msg:
-                    last_sent_messages[message.chat.id] = sent_msg.message_id
+                target_message = message.reply_to_message
+                target_id = last_sent_messages.get(message.chat.id)
+                if not target_id and target_message:
+                    target_id = target_message.message_id
+                await sender.deliver(bot, message.chat.id, m, last_sent_messages,
+                                     target_id=target_id, target_message=target_message)
 
     @dp.callback_query()
     async def on_callback(callback: types.CallbackQuery):
@@ -235,71 +400,14 @@ async def run_bot_worker(bot_id: int, token: str, settings_dict: dict):
                 except Exception:
                     pass
 
-            # 2. Process messages (edit or send)
-            for m in res.get("messages", []):
-                text = m.get("text", "")
-                markup = m.get("reply_markup")
-                mtype = m.get("media_type", "text")
-                murl = m.get("media_url", "")
-                is_edit = m.get("is_edit", False)
-
-                reply_markup = build_keyboard_markup(markup)
-
-                if is_edit:
-                    # Target is the message where the inline button was clicked
-                    if text and callback.message and callback.message.message_id:
-                        try:
-                            await bot.edit_message_text(
-                                chat_id=callback.message.chat.id,
-                                message_id=callback.message.message_id,
-                                text=text,
-                                parse_mode=ParseMode.HTML,
-                                reply_markup=reply_markup
-                            )
-                            last_sent_messages[callback.message.chat.id] = callback.message.message_id
-                            continue
-                        except Exception as err:
-                            logger.warning(f"Error editing callback message: {err}")
-
-                    # Fallback to sending new message if edit fails
-                    if text and callback.message:
-                        sent = await bot.send_message(
-                            chat_id=callback.message.chat.id,
-                            text=text,
-                            parse_mode=ParseMode.HTML,
-                            reply_markup=reply_markup
-                        )
-                        last_sent_messages[callback.message.chat.id] = sent.message_id
-                    continue
-
-                if callback.message:
-                    sent_msg = None
-                    if mtype == "text" and text:
-                        sent_msg = await bot.send_message(
-                            chat_id=callback.message.chat.id,
-                            text=text,
-                            parse_mode=ParseMode.HTML,
-                            reply_markup=reply_markup
-                        )
-                    elif mtype == "photo" and murl:
-                        sent_msg = await bot.send_photo(
-                            chat_id=callback.message.chat.id,
-                            photo=murl,
-                            caption=text,
-                            parse_mode=ParseMode.HTML,
-                            reply_markup=reply_markup
-                        )
-                    elif mtype == "video" and murl:
-                        sent_msg = await bot.send_video(
-                            chat_id=callback.message.chat.id,
-                            video=murl,
-                            caption=text,
-                            parse_mode=ParseMode.HTML,
-                            reply_markup=reply_markup
-                        )
-
-                    if sent_msg:
-                        last_sent_messages[callback.message.chat.id] = sent_msg.message_id
+            # 2. Process messages (edit or send) through the same transition path.
+            if callback.message:
+                for m in res.get("messages", []):
+                    await sender.deliver(
+                        bot, callback.message.chat.id, m, last_sent_messages,
+                        target_id=callback.message.message_id,
+                        target_message=callback.message,
+                    )
 
     # Start Polling with auto-recovery
     delay = RETRY_DELAY_BASE

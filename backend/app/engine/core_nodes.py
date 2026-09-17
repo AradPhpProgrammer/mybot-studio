@@ -93,6 +93,19 @@ NODE_CATALOG: Dict[str, Dict[str, Any]] = {
             "buttons": []
         }
     },
+    "action_keyboard": {
+        "id": "action_keyboard",
+        "name": "Keyboard / Buttons",
+        "category": "messages",
+        "icon": "Grid",
+        "description": "Attaches inline glass or reply keyboard buttons to the preceding message.",
+        "inputs": [{"id": "exec", "label": "Input"}],
+        "outputs": [{"id": "exec", "label": "Next"}],
+        "default_data": {
+            "keyboard_type": "inline",
+            "buttons": []
+        }
+    },
     "action_answer_callback": {
         "id": "action_answer_callback",
         "name": "Answer Callback (Alert)",

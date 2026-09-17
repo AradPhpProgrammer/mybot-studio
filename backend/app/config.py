@@ -8,7 +8,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 class Settings(BaseSettings):
     APP_NAME: str = "MyBot Engine"
-    VERSION: str = "1.0.0"
+    VERSION: str = "0.2.0"
     DEBUG: bool = True
     
     # Server & Secret Admin Path

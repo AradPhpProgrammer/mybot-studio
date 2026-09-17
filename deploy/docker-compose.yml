@@ -10,6 +10,10 @@ services:
     restart: always
     volumes:
       - mybot-data:/app/data
+      - ../backend/locales:/app/locales
+      - ../backend/fonts:/app/fonts
+      - ../backend/plugins:/app/plugins
+      - ../backend/uploads:/app/uploads
     environment:
       - DATABASE_PATH=/app/data/mybot.db
       - CF_PROXY_URL=${CF_PROXY_URL:-}

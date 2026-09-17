@@ -1,5 +1,5 @@
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 # Auth
 class LoginRequest(BaseModel):
@@ -19,6 +19,8 @@ class BotCreateRequest(BaseModel):
 
 class BotSettingsUpdate(BaseModel):
     name: Optional[str] = None
+    username: Optional[str] = None
+    token: Optional[str] = None
     bio: Optional[str] = None
     description: Optional[str] = None
     is_miniapp_enabled: Optional[bool] = None
@@ -29,8 +31,11 @@ class BotSettingsUpdate(BaseModel):
     cf_worker_url: Optional[str] = None
     default_language: Optional[str] = None
     sync_commands_automatically: Optional[bool] = None
+    enable_user_database: Optional[bool] = None
     tracked_user_fields: Optional[List[str]] = None
     is_active: Optional[bool] = None
+
+    model_config = ConfigDict(extra="forbid")
 
 class BotResponse(BaseModel):
     id: int

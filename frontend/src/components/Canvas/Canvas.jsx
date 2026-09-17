@@ -1,14 +1,17 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { cursorToFlowPosition } from '../../graphHistory.js';
 import {
   ReactFlow,
   Background,
   Controls,
+  Panel,
   MiniMap,
   ReactFlowProvider,
   useReactFlow
 } from '@xyflow/react';
 import { Plus, Trash2, Unlink } from 'lucide-react';
 
+import { collapsibleNode } from '../Nodes/CollapsibleNode';
 import TriggerNode from '../Nodes/TriggerNode';
 import MessageNode from '../Nodes/MessageNode';
 import ConditionNode from '../Nodes/ConditionNode';
@@ -16,6 +19,8 @@ import ActionNode from '../Nodes/ActionNode';
 import MathNode from '../Nodes/MathNode';
 import LoopNode from '../Nodes/LoopNode';
 import EditMessageNode from '../Nodes/EditMessageNode';
+import KeyboardNode from '../Nodes/KeyboardNode';
+import { styleGraphEdges } from '../Nodes/keyboardGraph.mjs';
 import { useI18n } from '../../locales/i18n';
 
 export default function Canvas(props) {
@@ -33,6 +38,11 @@ function CanvasInner({
   onEdgesChange,
   onConnect,
   onNodeClick,
+  onInit,
+  onNodeDragStart,
+  onNodeDragStop,
+  onSelectionDragStart,
+  onSelectionDragStop,
   onPaneContextMenu,
   onNodeContextMenu,
   onEdgeContextMenu,
@@ -47,24 +57,26 @@ function CanvasInner({
 
   const nodeTypes = useMemo(
     () => ({
-      trigger_start: TriggerNode,
-      trigger_command: TriggerNode,
-      trigger_callback: TriggerNode,
-      trigger_keyboard: TriggerNode,
-      trigger_message: TriggerNode,
-      action_send_message: MessageNode,
-      action_edit_message: EditMessageNode,
-      action_condition: ConditionNode,
-      action_set_variable: ActionNode,
-      action_loop: LoopNode,
-      math: MathNode,
-      math_add: MathNode,
-      math_subtract: MathNode,
-      math_multiply: MathNode,
-      math_divide: MathNode,
-      action_delay: ActionNode,
-      action_http_request: ActionNode,
-      action_answer_callback: ActionNode
+      trigger_start: collapsibleNode(TriggerNode),
+      trigger_command: collapsibleNode(TriggerNode),
+      trigger_callback: collapsibleNode(TriggerNode),
+      trigger_keyboard: collapsibleNode(TriggerNode),
+      trigger_message: collapsibleNode(TriggerNode),
+      action_send_message: collapsibleNode(MessageNode),
+      action_edit_message: collapsibleNode(EditMessageNode),
+      action_keyboard: collapsibleNode(KeyboardNode),
+      action_reply_keyboard: collapsibleNode(KeyboardNode),
+      action_condition: collapsibleNode(ConditionNode),
+      action_set_variable: collapsibleNode(ActionNode),
+      action_loop: collapsibleNode(LoopNode),
+      math: collapsibleNode(MathNode),
+      math_add: collapsibleNode(MathNode),
+      math_subtract: collapsibleNode(MathNode),
+      math_multiply: collapsibleNode(MathNode),
+      math_divide: collapsibleNode(MathNode),
+      action_delay: collapsibleNode(ActionNode),
+      action_http_request: collapsibleNode(ActionNode),
+      action_answer_callback: collapsibleNode(ActionNode)
     }),
     []
   );
@@ -88,43 +100,8 @@ function CanvasInner({
     };
   }, [contextMenu]);
 
-  // Compute styled edges: dashed=unsaved, solid=saved, dashed-red=error
-  const styledEdges = useMemo(() => {
-    const nodeIds = new Set(nodes.map((n) => n.id));
-    return edges.map((edge) => {
-      const isMissingNode = !nodeIds.has(edge.source) || !nodeIds.has(edge.target);
-      const isError = edge.data?.error || isMissingNode;
-
-      let stroke = 'var(--accent, #3b82f6)';
-      let strokeDasharray = undefined;
-      let animated = !dirty;
-
-      if (isError) {
-        stroke = '#ef4444';
-        strokeDasharray = '5 4';
-        animated = false;
-      } else if (dirty || edge.data?.unsaved) {
-        stroke = 'var(--warning, #f59e0b)';
-        strokeDasharray = '6 4';
-        animated = true;
-      } else {
-        stroke = 'var(--accent, #3b82f6)';
-        strokeDasharray = undefined;
-        animated = false;
-      }
-
-      return {
-        ...edge,
-        animated,
-        style: {
-          stroke,
-          strokeWidth: 2.5,
-          strokeDasharray,
-          ...(edge.style || {})
-        }
-      };
-    });
-  }, [edges, nodes, dirty]);
+  // Validation overrides persisted edge styles; it never mutates graph history.
+  const styledEdges = useMemo(() => styleGraphEdges(nodes, edges, dirty), [nodes, edges, dirty]);
 
   const isDark = theme === 'dark';
 
@@ -132,7 +109,8 @@ function CanvasInner({
   const handlePaneCtx = (e) => {
     e.preventDefault();
     const point = { x: e.clientX, y: e.clientY };
-    if (onPaneContextMenu) onPaneContextMenu(point);
+    setContextMenu(null);
+    if (onPaneContextMenu) onPaneContextMenu(point, cursorToFlowPosition(screenToFlowPosition, point));
   };
 
   // Right-click on a node -> local menu with Add (new node at this spot) + Delete
@@ -151,7 +129,7 @@ function CanvasInner({
 
   const handleAddHereFromMenu = (ev) => {
     ev.stopPropagation();
-    const pos = screenToFlowPosition({ x: contextMenu.x, y: contextMenu.y });
+    const pos = cursorToFlowPosition(screenToFlowPosition, contextMenu);
     onAddNodeAt?.(contextMenu.x, contextMenu.y, pos);
     setContextMenu(null);
   };
@@ -161,12 +139,18 @@ function CanvasInner({
   return (
     <div className="w-full h-full relative">
       <ReactFlow
+        colorMode={theme === 'dark' ? 'dark' : 'light'}
         nodes={nodes}
         edges={styledEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeClick={onNodeClick}
+        onInit={onInit}
+        onNodeDragStart={onNodeDragStart}
+        onNodeDragStop={onNodeDragStop}
+        onSelectionDragStart={onSelectionDragStart}
+        onSelectionDragStop={onSelectionDragStop}
         onNodeContextMenu={handleNodeCtx}
         onEdgeContextMenu={handleEdgeCtx}
         onPaneContextMenu={handlePaneCtx}
@@ -184,16 +168,32 @@ function CanvasInner({
         onMoveStart={handleCloseMenu}
       >
         <Background
-          color={isDark ? '#1e293b' : '#cbd5e1'}
+          color="var(--border)"
+          style={{ backgroundColor: 'var(--surface-secondary)' }}
           gap={20}
           size={2}
         />
+        {onAddNodeAt && <Panel position="top-right" className="canvas-touch-add !top-20">
+          <button
+            type="button"
+            aria-label={t('canvas.add_node_here')}
+            title={t('canvas.add_node_here')}
+            onClick={(event) => {
+              const rect = event.currentTarget.closest('.react-flow').getBoundingClientRect();
+              const point = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+              onAddNodeAt(point.x, point.y, cursorToFlowPosition(screenToFlowPosition, point));
+            }}
+            className="min-h-11 min-w-11 flex items-center justify-center rounded-xl border border-border bg-surface text-foreground shadow-lg hover:bg-surface-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            <Plus size={20} aria-hidden="true" />
+          </button>
+        </Panel>}
         <Controls
           className={
             '!rounded-xl !shadow-lg !overflow-hidden ' +
             (isDark
               ? '!bg-[#0d1322] !border !border-[#1e293b]'
-              : '!bg-white !border !border-gray-200')
+              : '!bg-surface-secondary !border !border-border')
           }
         />
         <MiniMap
@@ -202,10 +202,10 @@ function CanvasInner({
             '!rounded-xl !shadow-lg !overflow-hidden ' +
             (isDark
               ? '!bg-[#0a0f1d] !border !border-[#1e293b]'
-              : '!bg-white !border !border-gray-200')
+              : '!bg-surface-secondary !border !border-border')
           }
           nodeColor={() => (isDark ? '#334155' : '#cbd5e1')}
-          maskColor={isDark ? 'rgba(6,9,19,0.8)' : 'rgba(255,255,255,0.85)'}
+          maskColor="color-mix(in srgb, var(--surface-tertiary) 85%, transparent)"
           style={{ zIndex: 5 }}
           pannable={false}
           zoomable={false}
@@ -225,22 +225,18 @@ function CanvasInner({
               className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-foreground hover:bg-surface-secondary transition-colors"
             >
               <Plus size={14} className="text-accent" />
-              <span>{t('canvas.add_node_here') || 'Add Node Here'}</span>
+              <span>{t('canvas.add_node_here')}</span>
             </button>
           )}
 
           {contextMenu.type === 'node' && (
             <>
               <button
-                onClick={(ev) => {
-                  ev.stopPropagation();
-                  onAddNodeAt?.(contextMenu.x, contextMenu.y);
-                  setContextMenu(null);
-                }}
+                onClick={handleAddHereFromMenu}
                 className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-foreground hover:bg-surface-secondary transition-colors"
               >
                 <Plus size={14} className="text-accent" />
-                <span>{t('canvas.add_node_here') || 'Add Node Next'}</span>
+                <span>{t('canvas.add_node_here')}</span>
               </button>
               <button
                 onClick={() => {
@@ -250,7 +246,7 @@ function CanvasInner({
                 className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-danger hover:bg-danger/10 transition-colors"
               >
                 <Trash2 size={14} />
-                <span>{t('canvas.delete_node') || 'Delete Node'}</span>
+                <span>{t('canvas.delete_node')}</span>
               </button>
             </>
           )}
@@ -262,7 +258,7 @@ function CanvasInner({
                 className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-foreground hover:bg-surface-secondary transition-colors"
               >
                 <Plus size={14} className="text-accent" />
-                <span>{t('canvas.add_node_here') || 'Add Node Here'}</span>
+                <span>{t('canvas.add_node_here')}</span>
               </button>
               <button
                 onClick={() => {
@@ -272,7 +268,7 @@ function CanvasInner({
                 className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-danger hover:bg-danger/10 transition-colors"
               >
                 <Unlink size={14} />
-                <span>{t('canvas.delete_connection') || 'Delete Connection'}</span>
+                <span>{t('canvas.delete_connection')}</span>
               </button>
             </>
           )}

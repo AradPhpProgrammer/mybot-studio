@@ -37,7 +37,7 @@ export default function ReplyKeyboardBuilder({
   const handleAddFirstButton = (e) => {
     e?.stopPropagation?.();
     const newBtn = {
-      text: 'Button 1',
+      text: t('nodes.action_keyboard.new_button', { number: 1 }),
       callback_data: `btn_key_${Date.now().toString().slice(-4)}`,
       style: 'default'
     };
@@ -50,7 +50,7 @@ export default function ReplyKeyboardBuilder({
   const handleAddButtonToRow = (rIdx, e) => {
     e?.stopPropagation?.();
     const newBtn = {
-      text: `Button ${activeRows[rIdx].length + 1}`,
+      text: t('nodes.action_keyboard.new_button', { number: activeRows[rIdx].length + 1 }),
       callback_data: `btn_key_${Date.now().toString().slice(-4)}`,
       style: 'default'
     };
@@ -63,7 +63,7 @@ export default function ReplyKeyboardBuilder({
   const handleAddNewRow = (e) => {
     e?.stopPropagation?.();
     const newBtn = {
-      text: `Button Row ${activeRows.length + 1}`,
+      text: t('nodes.action_keyboard.new_button', { number: 1 }),
       callback_data: `btn_key_${Date.now().toString().slice(-4)}`,
       style: 'default'
     };
@@ -106,7 +106,7 @@ export default function ReplyKeyboardBuilder({
       <div className="flex items-center justify-between pb-2 border-b border-border text-xs font-bold text-foreground">
         <div className="flex items-center gap-1.5">
           <Grid size={14} className="text-red-400" />
-          <span>{t('mockup.reply_keyboard') || 'Reply Keyboard Builder'}</span>
+          <span>{t('mockup.reply_keyboard')}</span>
         </div>
         <button
           onClick={onClose}
@@ -122,7 +122,7 @@ export default function ReplyKeyboardBuilder({
         <div className="p-2 rounded-xl bg-surface-secondary/70 border border-border flex flex-wrap items-center justify-between gap-2 text-xs">
           {/* Identifier Input */}
           <div className="flex items-center gap-1.5 flex-1 min-w-[140px]">
-            <span className="text-[10px] text-muted font-semibold uppercase">ID:</span>
+            <span className="text-[10px] text-muted font-semibold uppercase">{t('common.id')}:</span>
             <input
               type="text"
               value={currentBtn.callback_data || ''}
@@ -138,7 +138,7 @@ export default function ReplyKeyboardBuilder({
             <button
               type="button"
               onClick={() => updateSelectedBtn('style', 'primary')}
-              title="Blue (Primary)"
+              title={t('inspector.style_primary')}
               className={`w-5 h-5 rounded-full bg-blue-500 transition-all ${
                 currentBtn.style === 'primary' ? 'ring-2 ring-offset-1 ring-blue-500 scale-110' : 'opacity-70 hover:opacity-100'
               }`}
@@ -147,7 +147,7 @@ export default function ReplyKeyboardBuilder({
             <button
               type="button"
               onClick={() => updateSelectedBtn('style', 'success')}
-              title="Green (Success)"
+              title={t('inspector.style_success')}
               className={`w-5 h-5 rounded-full bg-emerald-500 transition-all ${
                 currentBtn.style === 'success' ? 'ring-2 ring-offset-1 ring-emerald-500 scale-110' : 'opacity-70 hover:opacity-100'
               }`}
@@ -156,7 +156,7 @@ export default function ReplyKeyboardBuilder({
             <button
               type="button"
               onClick={() => updateSelectedBtn('style', 'danger')}
-              title="Red (Danger)"
+              title={t('inspector.style_danger')}
               className={`w-5 h-5 rounded-full bg-red-500 transition-all ${
                 currentBtn.style === 'danger' ? 'ring-2 ring-offset-1 ring-red-500 scale-110' : 'opacity-70 hover:opacity-100'
               }`}
@@ -165,7 +165,7 @@ export default function ReplyKeyboardBuilder({
             <button
               type="button"
               onClick={() => updateSelectedBtn('style', 'default')}
-              title="Transparent (Default)"
+              title={t('inspector.style_default')}
               className={`w-5 h-5 rounded-full border-2 border-muted/80 flex items-center justify-center transition-all ${
                 !currentBtn.style || currentBtn.style === 'default'
                   ? 'ring-2 ring-offset-1 ring-muted scale-110 border-foreground'
@@ -182,16 +182,16 @@ export default function ReplyKeyboardBuilder({
               type="button"
               onClick={handleAddNewRow}
               className="px-2 py-1 rounded-lg bg-surface border border-border text-[11px] text-foreground hover:bg-surface-secondary flex items-center gap-1 font-medium"
-              title="Add New Row"
+              title={t('inspector.add_row')}
             >
               <Plus size={11} />
-              <span>Row</span>
+              <span>{t('mockup.buttons.row')}</span>
             </button>
             <button
               type="button"
               onClick={handleDeleteSelected}
               className="p-1.5 rounded-lg text-danger hover:bg-danger/10 border border-transparent hover:border-danger/30 transition-colors"
-              title="Delete Selected Button"
+              title={t('nodes.action_keyboard.delete_button')}
             >
               <Trash2 size={13} />
             </button>
@@ -199,7 +199,7 @@ export default function ReplyKeyboardBuilder({
         </div>
       ) : rows.length > 0 ? (
         <div className="text-[11px] text-muted text-center py-1">
-          Click any button below to edit its identifier, color, or text.
+          {t('mockup.buttons.edit_hint')}
         </div>
       ) : null}
 
@@ -214,7 +214,7 @@ export default function ReplyKeyboardBuilder({
             <Plus size={20} />
           </div>
           <span className="text-xs font-semibold text-muted group-hover:text-foreground transition-colors">
-            {t('mockup.add_first_button') || 'Click to Add First Button (Full Width)'}
+            {t('mockup.add_first_button')}
           </span>
         </div>
       ) : (
@@ -251,7 +251,7 @@ export default function ReplyKeyboardBuilder({
                         );
                         commitRows(newRows);
                       }}
-                      placeholder="Button Text"
+                      placeholder={t('inspector.button_text')}
                       className="w-full bg-transparent text-center font-medium text-xs outline-none cursor-text truncate"
                     />
                   </div>
@@ -263,7 +263,7 @@ export default function ReplyKeyboardBuilder({
                 type="button"
                 onClick={(e) => handleAddButtonToRow(rIdx, e)}
                 className="p-2 rounded-xl border border-dashed border-border hover:border-accent text-muted hover:text-accent bg-surface transition-all shrink-0"
-                title="Add button next to this row"
+                title={t('mockup.buttons.add_to_row')}
               >
                 <Plus size={13} />
               </button>

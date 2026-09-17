@@ -332,14 +332,21 @@ class DAGRunner:
         # Index nodes and edges
         node_map = {n["id"]: n for n in nodes}
         adj_list: Dict[str, List[Dict[str, Any]]] = {}
+        incoming_edges: Dict[str, List[Dict[str, Any]]] = {}
         for edge in edges:
             source = edge.get("source")
+            target = edge.get("target")
             adj_list.setdefault(source, []).append(edge)
+            incoming_edges.setdefault(target, []).append(edge)
 
         produced_messages = []
         produced_alerts = []
         chat_actions = []
         executed_steps = []
+        errors = []
+        # Map produced message entries to the node_id that created them so a keyboard
+        # node can attach to its OWN executed predecessor, never another branch's last message.
+        produced_by_node = {}
 
         # Execute starting from entry nodes
         queue = []
@@ -395,17 +402,43 @@ class DAGRunner:
                     "node_id": node_id
                 }
                 produced_messages.append(msg_item)
+                produced_by_node[node_id] = msg_item
 
             elif ntype == "action_edit_message":
                 text = render_variables(data.get("text", ""), context)
                 buttons = data.get("buttons", [])
-                reply_markup = build_telegram_keyboard(buttons, is_inline=True)
-                produced_messages.append({
+                kb_type = data.get("keyboard_type", "inline")
+                reply_markup = build_telegram_keyboard(buttons, is_inline=(kb_type == "inline")) if buttons else None
+                msg_item = {
                     "is_edit": True,
                     "text": text,
                     "reply_markup": reply_markup,
                     "node_id": node_id
-                })
+                }
+                produced_messages.append(msg_item)
+                produced_by_node[node_id] = msg_item
+
+            elif ntype in ("action_keyboard", "action_reply_keyboard"):
+                buttons = data.get("buttons", [])
+                kb_type = data.get("keyboard_type", "reply" if ntype == "action_reply_keyboard" else "inline")
+                incoming = incoming_edges.get(node_id, [])
+                predecessor_id = incoming[0].get("source") if len(incoming) == 1 else None
+                predecessor = node_map.get(predecessor_id, {})
+                predecessor_type = predecessor.get("type") or predecessor.get("node_type")
+                target_message = produced_by_node.get(predecessor_id)
+                error_code = None
+                if len(incoming) != 1 or predecessor_type not in ("action_send_message", "action_edit_message"):
+                    error_code = "INVALID_KEYBOARD_INPUT"
+                elif predecessor_type == "action_edit_message" and kb_type != "inline":
+                    error_code = "EDIT_MESSAGE_REPLY_MARKUP_NOT_SUPPORTED"
+                elif target_message is None:
+                    error_code = "MISSING_PREDECESSOR"
+                if error_code:
+                    errors.append({"node_id": node_id, "error_code": error_code})
+                    executed_steps.pop()  # Rejected nodes did not execute.
+                    continue  # Do not execute descendants of the rejected keyboard.
+                target_message["reply_markup"] = build_telegram_keyboard(buttons, is_inline=(kb_type == "inline"))
+                target_message["keyboard_node_id"] = node_id
 
             elif ntype == "action_answer_callback":
                 alert_text = render_variables(data.get("text", ""), context)
@@ -562,8 +595,8 @@ class DAGRunner:
         await self.save_user_data(user_obj["id"], context["user"])
 
         duration = (time.time() - start_time) * 1000
-        return {
-            "success": True,
+        result = {
+            "success": not errors,
             "messages": produced_messages,
             "alerts": produced_alerts,
             "chat_actions": chat_actions,
@@ -571,3 +604,6 @@ class DAGRunner:
             "steps_executed": executed_steps,
             "duration_ms": round(duration, 2)
         }
+        if errors:
+            result["errors"] = errors
+        return result

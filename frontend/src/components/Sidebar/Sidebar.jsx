@@ -78,7 +78,7 @@ export default function Sidebar({ activeTab, onTabChange, onLogout, collapsed, o
             <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent">
               <User size={14} />
             </div>
-            {!collapsed && <span className="text-xs text-foreground font-medium">Admin</span>}
+            {!collapsed && <span className="text-xs text-foreground font-medium">{t('sidebar.admin')}</span>}
           </div>
           
           <button

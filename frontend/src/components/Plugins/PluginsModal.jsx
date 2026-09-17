@@ -21,6 +21,7 @@ const ICON_MAP = {
 
 export default function PluginsModal({ isOpen, onClose, currentBot }) {
   const { t, lang } = useI18n();
+  const pluginText = (plugin, field) => plugin[`${field}_${lang}`] || plugin[field] || '';
   const [plugins, setPlugins] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -68,7 +69,7 @@ export default function PluginsModal({ isOpen, onClose, currentBot }) {
               <Puzzle size={18} />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-foreground">{t('plugins.modal_title') || t('navbar.plugins')}</h2>
+              <h2 className="text-sm font-bold text-foreground">{t('plugins.modal_title')}</h2>
               <p className="text-[11px] text-muted">{t('plugins.modal_subtitle')}</p>
             </div>
           </div>
@@ -99,7 +100,7 @@ export default function PluginsModal({ isOpen, onClose, currentBot }) {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-foreground">
-                          {lang === 'fa' ? (plugin.name_fa || plugin.name) : plugin.name}
+                          {pluginText(plugin, 'name')}
                         </span>
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-surface text-muted border border-border">
                           v{plugin.version}
@@ -109,7 +110,7 @@ export default function PluginsModal({ isOpen, onClose, currentBot }) {
                         </span>
                       </div>
                       <p className="text-[11px] text-muted leading-relaxed">
-                        {lang === 'fa' ? (plugin.description_fa || plugin.description) : plugin.description}
+                        {pluginText(plugin, 'description')}
                       </p>
                     </div>
                   </div>

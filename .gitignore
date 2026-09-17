@@ -61,3 +61,7 @@ yarn-error.log*
 *.swo
 .DS_Store
 Thumbs.db
+
+# Per-bot uploaded avatars (user assets, never publish)
+backend/uploads/bot_*
+!backend/uploads/default-bot.png

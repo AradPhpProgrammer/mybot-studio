@@ -10,7 +10,9 @@ BOTS_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "bots"
 BOTS_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # Default fields saved automatically to keep the bot DB lean and fast
-DEFAULT_TRACKED_FIELDS = ["telegram_id", "chat_id", "first_name", "start_date"]
+# custom_variables is included so the Flow Set-Variables (NoSQL) feature works
+# out of the box — consistent with enable_user_database defaulting to True.
+DEFAULT_TRACKED_FIELDS = ["telegram_id", "chat_id", "first_name", "start_date", "custom_variables"]
 
 # All candidate user attributes that can be enabled via bot settings
 AVAILABLE_USER_FIELDS = [
@@ -26,7 +28,7 @@ AVAILABLE_USER_FIELDS = [
     {"key": "inviter_id", "label_en": "Inviter Telegram ID", "label_fa": "شناسه دعوت‌کننده", "default": False, "required": False},
     {"key": "last_seen", "label_en": "Last Activity Timestamp", "label_fa": "زمان آخرین فعالیت", "default": False, "required": False},
     {"key": "total_starts", "label_en": "Total /start Counter", "label_fa": "شمارنده تعداد دستور استارت", "default": False, "required": False},
-    {"key": "custom_variables", "label_en": "Flow Set-Variables (NoSQL)", "label_fa": "متغیرهای سفارشی داخل فلو", "default": False, "required": False},
+    {"key": "custom_variables", "label_en": "Flow Set-Variables (NoSQL)", "label_fa": "متغیرهای سفارشی داخل فلو", "default": True, "required": False},
 ]
 
 

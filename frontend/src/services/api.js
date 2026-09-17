@@ -1,36 +1,19 @@
-// Smart error handling for API calls — catches HTML responses (SPA fallback) 
-// and surfaces actionable debug info to the user.
+import { translate as t } from '../locales/translate.js';
+
+// Localize authored diagnostics, retaining server detail (including validation arrays).
 async function _jsonOrDie(res, fallbackMsg) {
   const ct = res.headers.get('content-type') || '';
-  if (!res.ok) {
-    if (!ct.includes('json')) {
-      // Server returned HTML instead of JSON — likely SPA fallback or server down
-      const text = await res.text().catch(() => '');
-      throw new Error(
-        'Server returned HTML instead of JSON.\n\n' +
-        'Possible causes:\n' +
-        '• Backend is not running — start it with: python -m app.main (in backend/)\n' +
-        '• Frontend dev server proxy misconfigured — check vite.config.js\n' +
-        '• Docker/nginx deployment issue — verify /api/ route reaches the backend\n' +
-        `• Status code: ${res.status}`
-      );
-    }
-    try {
-      const err = await res.json();
-      throw new Error(err.detail || fallbackMsg);
-    } catch {
-      throw new Error(fallbackMsg || `Request failed with status ${res.status}`);
-    }
-  }
   if (!ct.includes('json')) {
-    const text = await res.text().catch(() => '');
-    throw new Error(
-      'Expected JSON but received HTML — the server may be down or misconfigured.\n\n' +
-      'Check that the backend is running on port 8000 and the nginx proxy is correct.\n' +
-      `Content-Type: ${ct}\nResponse preview: ${text.slice(0, 200)}`
-    );
+    throw new Error(t('api_errors.non_json', { status: res.status, type: ct || '—' }));
   }
-  return res.json();
+  let result;
+  try { result = await res.json(); }
+  catch { throw new Error(fallbackMsg || t('api_errors.invalid_json')); }
+  if (!res.ok) {
+    const detail = result?.detail;
+    throw new Error((typeof detail === 'string' ? detail : detail ? JSON.stringify(detail) : '') || fallbackMsg || t('api_errors.status', { status: res.status }));
+  }
+  return result;
 }
 
 const API_BASE = '/api';
@@ -43,7 +26,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
     });
-    return _jsonOrDie(res, 'Invalid username or password');
+    return _jsonOrDie(res, t('login.error'));
   },
   async changeCredentials(currentPassword, newUsername, newPassword) {
     const res = await fetch(`${API_BASE}/auth/change-credentials`, {
@@ -55,13 +38,13 @@ export const api = {
         new_password: newPassword
       })
     });
-    return _jsonOrDie(res, 'Failed to update credentials');
+    return _jsonOrDie(res, t('api_errors.credentials'));
   },
 
   // Bots
   async getBots() {
     const res = await fetch(`${API_BASE}/bots`);
-    return _jsonOrDie(res, 'Failed to load bots');
+    return _jsonOrDie(res, t('api_errors.bots'));
   },
   async createBot(token, customProxy = '', cfWorkerUrl = '') {
     const res = await fetch(`${API_BASE}/bots`, {
@@ -69,11 +52,11 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, custom_proxy: customProxy, cf_worker_url: cfWorkerUrl })
     });
-    return _jsonOrDie(res, 'Failed to create bot');
+    return _jsonOrDie(res, t('api_errors.create_bot'));
   },
   async getBot(botId) {
     const res = await fetch(`${API_BASE}/bots/${botId}`);
-    return _jsonOrDie(res, 'Failed to load bot');
+    return _jsonOrDie(res, t('api_errors.bot'));
   },
   async updateBotSettings(botId, settings) {
     const res = await fetch(`${API_BASE}/bots/${botId}/settings`, {
@@ -81,28 +64,28 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings)
     });
-    return _jsonOrDie(res, 'Failed to update bot settings');
+    return _jsonOrDie(res, t('api_errors.bot_settings'));
   },
   async toggleBotActive(botId) {
     const res = await fetch(`${API_BASE}/bots/${botId}/toggle-active`, {
       method: 'POST'
     });
-    return _jsonOrDie(res, 'Failed to toggle bot');
+    return _jsonOrDie(res, t('api_errors.bot_toggle'));
   },
   async deleteBot(botId) {
     const res = await fetch(`${API_BASE}/bots/${botId}`, { method: 'DELETE' });
-    return _jsonOrDie(res, 'Failed to delete bot');
+    return _jsonOrDie(res, t('api_errors.bot_delete'));
   },
   async syncCommands(botId) {
     const res = await fetch(`${API_BASE}/bots/${botId}/sync-commands`, { method: 'POST' });
-    return _jsonOrDie(res, 'Failed to sync commands');
+    return _jsonOrDie(res, t('api_errors.commands'));
   },
 
   // Flows
   async getFlow(botId) {
     const res = await fetch(`${API_BASE}/flows/${botId}`);
     if (!res.ok) return null;
-    return _jsonOrDie(res, 'Failed to load flow');
+    return _jsonOrDie(res, t('api_errors.flow'));
   },
   async saveFlow(botId, { name, nodes, edges, viewport }) {
     const res = await fetch(`${API_BASE}/flows/${botId}`, {
@@ -110,15 +93,15 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, nodes, edges, viewport })
     });
-    return _jsonOrDie(res, 'Failed to save flow');
+    return _jsonOrDie(res, t('api_errors.flow_save'));
   },
   async getNodeCatalog() {
     const res = await fetch(`${API_BASE}/flows/catalog`);
-    return _jsonOrDie(res, 'Failed to load catalog');
+    return _jsonOrDie(res, t('api_errors.catalog'));
   },
   async exportFlow(botId) {
     const res = await fetch(`${API_BASE}/flows/${botId}/export`);
-    return _jsonOrDie(res, 'Export failed');
+    return _jsonOrDie(res, t('api_errors.export'));
   },
   async importFlow(botId, file) {
     const formData = new FormData();
@@ -127,14 +110,14 @@ export const api = {
       method: 'POST',
       body: formData
     });
-    return _jsonOrDie(res, 'Import failed');
+    return _jsonOrDie(res, t('api_errors.import'));
   },
 
   async refreshBotInfo(botId) {
     const res = await fetch(`${API_BASE}/bots/${botId}/refresh`, {
       method: 'POST',
     });
-    return _jsonOrDie(res, 'Refresh failed');
+    return _jsonOrDie(res, t('api_errors.refresh'));
   },
 
   async uploadBotAvatar(botId, file) {
@@ -144,13 +127,13 @@ export const api = {
       method: 'POST',
       body: formData
     });
-    return _jsonOrDie(res, 'Upload failed');
+    return _jsonOrDie(res, t('api_errors.upload'));
   },
 
   async getBotDbSchema(botId) {
     const res = await fetch(`${API_BASE}/bots/${botId}/database-schema`);
     if (!res.ok) return null;
-    return _jsonOrDie(res, 'Failed to load schema');
+    return _jsonOrDie(res, t('api_errors.schema'));
   },
 
   // Simulator
@@ -167,13 +150,13 @@ export const api = {
         first_name: userInfo.first_name || 'Tester'
       })
     });
-    return _jsonOrDie(res, 'Simulation failed');
+    return _jsonOrDie(res, t('api_errors.simulation'));
   },
 
   // Plugins
   async getPlugins() {
     const res = await fetch(`${API_BASE}/plugins`);
-    return _jsonOrDie(res, 'Failed to load plugins');
+    return _jsonOrDie(res, t('api_errors.plugins'));
   },
   async togglePlugin(pluginKey, isActive) {
     const res = await fetch(`${API_BASE}/plugins/toggle`, {
@@ -181,13 +164,13 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ plugin_key: pluginKey, is_active: isActive })
     });
-    return _jsonOrDie(res, 'Failed to toggle plugin');
+    return _jsonOrDie(res, t('api_errors.plugin_toggle'));
   },
 
   // Languages & Fonts
   async getLanguages() {
     const res = await fetch(`${API_BASE}/i18n/languages`);
-    return _jsonOrDie(res, 'Failed to load languages');
+    return _jsonOrDie(res, t('api_errors.languages'));
   },
   async uploadLanguage(file) {
     const formData = new FormData();
@@ -196,29 +179,29 @@ export const api = {
       method: 'POST',
       body: formData
     });
-    return _jsonOrDie(res, 'Language upload failed');
+    return _jsonOrDie(res, t('api_errors.language_upload'));
   },
   async getFonts() {
     const res = await fetch(`${API_BASE}/fonts`);
-    return _jsonOrDie(res, 'Failed to load fonts');
+    return _jsonOrDie(res, t('api_errors.fonts'));
   },
 
   // System
   async getSystemInfo() {
     const res = await fetch(`${API_BASE}/system/info`);
-    return _jsonOrDie(res, 'Failed to get system info');
+    return _jsonOrDie(res, t('api_errors.system'));
   },
   async checkUpdate() {
     const res = await fetch(`${API_BASE}/system/check-update`);
-    return _jsonOrDie(res, 'Update check failed');
+    return _jsonOrDie(res, t('api_errors.update_check'));
   },
   async triggerUpdate() {
     const res = await fetch(`${API_BASE}/system/update`, { method: 'POST' });
-    return _jsonOrDie(res, 'Update failed');
+    return _jsonOrDie(res, t('api_errors.update'));
   },
   async getProxyConfig() {
     const res = await fetch(`${API_BASE}/system/proxy`);
-    return _jsonOrDie(res, 'Failed to load proxy config');
+    return _jsonOrDie(res, t('api_errors.proxy'));
   },
   async saveProxyConfig(config) {
     const res = await fetch(`${API_BASE}/system/proxy`, {
@@ -226,7 +209,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(config)
     });
-    return _jsonOrDie(res, 'Failed to save proxy config');
+    return _jsonOrDie(res, t('api_errors.proxy_save'));
   },
   async testProxy(config) {
     const res = await fetch(`${API_BASE}/system/proxy/test`, {
@@ -234,6 +217,6 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(config)
     });
-    return _jsonOrDie(res, 'Proxy test failed');
+    return _jsonOrDie(res, t('api_errors.proxy_test'));
   }
 };

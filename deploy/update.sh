@@ -1,32 +1,30 @@
 #!/usr/bin/env bash
-set -e
-
-# ==============================================================================
-# MyBot Zero-Downtime Panel Updater (Linux)
-# ==============================================================================
-# Pulls latest updates, rebuilds and restarts only the panel containers
-# (mybot-panel-backend and mybot-frontend) while keeping the bot engine
-# (mybot-bot-engine) running 24/7 without a single millisecond of downtime!
-# ==============================================================================
-
-echo "======================================================"
-echo "🚀 Starting Zero-Downtime MyBot Update..."
-echo "======================================================"
-
+set -euo pipefail
 cd "$(dirname "$0")/.."
-
-# 1. Pull newest code
-if [ -d ".git" ]; then
-    echo "📦 Pulling latest changes from repository..."
-    git pull origin master || git pull origin main || git pull
+# --check validates tooling/config only: no pull, build or restart.
+if docker compose version >/dev/null 2>&1; then
+    COMPOSE=(docker compose)
+elif command -v docker-compose >/dev/null 2>&1; then
+    COMPOSE=(docker-compose)
+else
+    printf '%s\n' 'Docker Compose is required.' >&2
+    exit 1
 fi
-
-# 2. Rebuild and restart ONLY panel containers
-echo "🔄 Rebuilding and restarting Panel containers..."
-docker compose -f deploy/docker-compose.yml build mybot-panel-backend mybot-frontend
-docker compose -f deploy/docker-compose.yml up -d --no-deps mybot-panel-backend mybot-frontend
-
-echo "======================================================"
-echo "✅ Update completed successfully!"
-echo "🤖 Bot runner remained online 100% uninterrupted."
-echo "======================================================"
+"${COMPOSE[@]}" -f deploy/docker-compose.yml config --quiet
+if [[ "${1:-}" == '--check' ]]; then
+    printf '%s\n' 'Compose configuration validated; no services changed.'
+    exit 0
+fi
+printf '%s\n' 'Back up configuration, databases and uploads before upgrading.' 'This update rebuilds the worker too; a brief interruption is expected.'
+if [[ -d .git ]]; then
+    if [[ -n "$(git status --porcelain)" ]]; then
+        printf '%s\n' 'Working tree has local changes. Review them before updating.' >&2
+        exit 1
+    fi
+    # Follow the current upstream; never silently switch release branches.
+    git pull --ff-only
+fi
+"${COMPOSE[@]}" -f deploy/docker-compose.yml build mybot-panel-backend mybot-frontend mybot-bot-engine
+"${COMPOSE[@]}" -f deploy/docker-compose.yml up -d --no-deps mybot-panel-backend mybot-frontend mybot-bot-engine
+"${COMPOSE[@]}" -f deploy/docker-compose.yml ps
+printf '%s\n' 'Update commands completed. Check service health and bot behavior.'

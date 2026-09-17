@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useI18n } from '../../locales/i18n';
 
 function slugify(text) {
   if (!text || !text.trim()) return '';
@@ -12,6 +13,7 @@ function slugify(text) {
  * scroll containers or node boundaries. Keyboard: ↑↓ + Enter/Tab to accept.
  */
 export default function CallbackAutocomplete({ value, onChange, placeholder, className, aside }) {
+  const { t } = useI18n();
   const inputRef = useRef(null);
   const wrapRef = useRef(null);
   const [open, setOpen] = useState(false);
@@ -101,8 +103,8 @@ export default function CallbackAutocomplete({ value, onChange, placeholder, cla
             onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="px-3 py-1.5 text-[9px] font-bold text-muted uppercase tracking-wider border-b border-border bg-surface-secondary/50 flex items-center justify-between">
-              <span>Callback / Event</span>
-              <span className="text-[8px] font-normal text-muted/70">↑↓ Enter</span>
+              <span>{t('inspector.callback_data')}</span>
+              <span className="text-[8px] font-normal text-muted/70">{t('variable_ui.keys')}</span>
             </div>
             <div id="callbacks-suggest-list" className="max-h-44 overflow-y-auto p-1">
               {filtered.map((s, i) => (

@@ -64,7 +64,7 @@ export default function TriggerNode({ id, data, selected, type }) {
         iconBg: 'bg-blue-500/15 border-blue-500/30 text-blue-400',
         badge: 'text-blue-400',
         focus: 'focus:border-blue-500',
-        label: t('nodes.trigger_callback.name') || 'Inline Button Event'
+        label: t('nodes.trigger_callback.name')
       }
     : isKeyboard
     ? {
@@ -74,7 +74,7 @@ export default function TriggerNode({ id, data, selected, type }) {
         iconBg: 'bg-red-500/15 border-red-500/30 text-red-400',
         badge: 'text-red-400',
         focus: 'focus:border-red-400',
-        label: t('nodes.trigger_keyboard.name') || 'Reply Keyboard Event'
+        label: t('nodes.trigger_keyboard.name')
       }
     : {
         border: 'border-emerald-500',
@@ -84,10 +84,10 @@ export default function TriggerNode({ id, data, selected, type }) {
         badge: 'text-emerald-500',
         focus: 'focus:border-emerald-500',
         label: isStart
-          ? (t('nodes.trigger_start.name') || 'Start (/start)')
+          ? (t('nodes.trigger_start.name'))
           : isCommand
-          ? (t('nodes.trigger_command.name') || 'Command')
-          : (t('nodes.trigger_message.name') || 'Trigger')
+          ? (t('nodes.trigger_command.name'))
+          : (t('nodes.trigger_message.name'))
       };
 
   return (
@@ -98,7 +98,7 @@ export default function TriggerNode({ id, data, selected, type }) {
         </div>
         <div>
           <div className={`text-[10px] uppercase font-bold tracking-wider ${colorTheme.badge}`}>
-            {t('sidebar.triggers') || 'Trigger'}
+            {t('sidebar.triggers')}
           </div>
           <div className="text-xs font-semibold text-foreground">{colorTheme.label}</div>
         </div>
@@ -113,12 +113,12 @@ export default function TriggerNode({ id, data, selected, type }) {
             value={cmd}
             onChange={(v) => update('callback_data', v)}
             aside={{ suggestions }}
-            placeholder={isKeyboard ? (t('inspector.reply_keyboard') || "Keyboard identifier") : (t('inspector.callback_data') || "Inline identifier")}
+            placeholder={isKeyboard ? (t('inspector.reply_keyboard')) : (t('inspector.callback_data'))}
             className={`w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] font-mono text-foreground outline-none ${colorTheme.focus}`}
           />
         )}
         {isCommand && (
-          <input type="text" value={data.description || ''} onChange={e => update('description', e.target.value)} placeholder={t('inspector.description') || "Description (Telegram menu)"}
+          <input type="text" value={data.description || ''} onChange={e => update('description', e.target.value)} placeholder={t('inspector.description')}
             className={`w-full px-2.5 py-1.5 rounded-lg bg-surface-secondary border border-border text-[11px] text-foreground outline-none ${colorTheme.focus}`} />
         )}
       </div>

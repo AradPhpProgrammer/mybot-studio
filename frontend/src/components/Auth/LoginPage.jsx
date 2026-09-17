@@ -25,7 +25,7 @@ export default function LoginPage({ onLoginSuccess }) {
       onLoginSuccess(res);
     } catch (err) {
       setLoading(false);
-      setError(err.message || 'Invalid username or password');
+      setError(err.message || t('login.error'));
     }
   };
 

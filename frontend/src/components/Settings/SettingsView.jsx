@@ -66,7 +66,7 @@ export default function SettingsView({ currentTheme, onThemeChange }) {
     try {
       const res = await api.changeCredentials(currentPassword, newUsername, newPassword);
       setCredLoading(false);
-      setCredMessage({ text: res.message, type: 'success' });
+      setCredMessage({ text: t('settings.credentials_saved'), type: 'success' });
       setCurrentPassword('');
       setNewPassword('');
     } catch (err) {
@@ -218,10 +218,10 @@ export default function SettingsView({ currentTheme, onThemeChange }) {
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted">{t('settings.select_language')}</label>
               <div className="grid grid-cols-2 gap-2">
-                {[{ code: 'en', name: 'English', flag: '🇺🇸' }, { code: 'fa', name: 'فارسی', flag: '🇮🇷' }, { code: 'ru', name: 'Русский', flag: '🇷🇺' }, { code: 'ar', name: 'العربية', flag: '🇸🇦' }].map((l) => (
+                {[{ code: 'en', flag: '🇺🇸' }, { code: 'fa', flag: '🇮🇷' }, { code: 'ru', flag: '🇷🇺' }, { code: 'ar', flag: '🇸🇦' }].map((l) => (
                   <button key={l.code} type="button" onClick={() => setLang(l.code)} className={`flex items-center gap-2.5 p-3 rounded-xl border text-xs font-medium transition-all ${lang === l.code ? 'bg-accent text-accent-foreground border-accent shadow-sm' : 'bg-surface-secondary border-border hover:border-muted text-foreground'}`}>
                     <span className="text-base">{l.flag}</span>
-                    <span>{l.name}</span>
+                    <span>{t(`languages.${l.code}`)}</span>
                   </button>
                 ))}
               </div>
@@ -253,7 +253,7 @@ export default function SettingsView({ currentTheme, onThemeChange }) {
                 {fontList.map((f) => (
                   <button key={f.id} type="button" onClick={() => setFont(f.id)} className={`w-full flex items-center justify-between p-3 rounded-xl border text-xs font-medium transition-all ${currentFont === f.id ? 'bg-accent text-accent-foreground border-accent shadow-sm' : 'bg-surface-secondary border-border hover:border-muted text-foreground'}`}>
                     <span>{f.name}</span>
-                    <span className="text-[10px] opacity-70 font-mono">ABC</span>
+                    <span className="text-[10px] opacity-70 font-mono">{t('settings.font_sample')}</span>
                   </button>
                 ))}
               </div>

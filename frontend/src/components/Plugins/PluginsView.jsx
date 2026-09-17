@@ -20,6 +20,7 @@ const ICON_MAP = {
 
 export default function PluginsView() {
   const { t, lang } = useI18n();
+  const pluginText = (plugin, field) => plugin[`${field}_${lang}`] || plugin[field] || '';
   const [plugins, setPlugins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -50,8 +51,8 @@ export default function PluginsView() {
   };
 
   const filtered = plugins.filter(p => {
-    const name = lang === 'fa' ? p.name_fa : p.name;
-    const desc = lang === 'fa' ? p.description_fa : p.description;
+    const name = pluginText(p, 'name');
+    const desc = pluginText(p, 'description');
     return name.toLowerCase().includes(search.toLowerCase()) || desc.toLowerCase().includes(search.toLowerCase());
   });
 
@@ -63,7 +64,7 @@ export default function PluginsView() {
           <div className="space-y-1">
             <h1 className="text-xl font-bold text-foreground">{t('sidebar.plugins')}</h1>
             <p className="text-xs text-muted">
-              {t('plugins.manage_subtitle') || 'Manage and activate canvas toolbox and admin extensions'}
+              {t('plugins.manage_subtitle')}
             </p>
           </div>
 
@@ -83,11 +84,11 @@ export default function PluginsView() {
         {loading ? (
           <div className="flex items-center justify-center py-20 text-xs text-muted gap-2">
             <Loader2 size={16} className="animate-spin" />
-            <span>{t('plugins.loading') || 'Loading...'}</span>
+            <span>{t('plugins.loading')}</span>
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-xs text-muted bg-surface rounded-2xl border border-border">
-            {t('plugins.no_plugins') || 'No plugins found.'}
+            {t('plugins.no_plugins')}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -106,7 +107,7 @@ export default function PluginsView() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-foreground">
-                            {lang === 'fa' ? (plugin.name_fa || plugin.name) : plugin.name}
+                            {pluginText(plugin, 'name')}
                           </span>
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-surface-secondary text-muted border border-border">
                             v{plugin.version}
@@ -134,7 +135,7 @@ export default function PluginsView() {
                   </div>
 
                   <p className="text-xs text-muted leading-relaxed line-clamp-2">
-                    {lang === 'fa' ? plugin.description_fa : plugin.description}
+                    {pluginText(plugin, 'description')}
                   </p>
                 </div>
               );
