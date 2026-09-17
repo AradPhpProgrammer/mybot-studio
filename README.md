@@ -27,7 +27,7 @@ Each send has **one `reply_markup`**: inline and reply markup cannot be combined
 Install Git, then clone the intended `main` branch after migration:
 
 ```bash
-git clone --branch main https://github.com/AradPhpProgrammer/mybot-studio.git
+git clone --branch master https://github.com/AradPhpProgrammer/mybot-studio.git
 cd mybot-studio
 ```
 
