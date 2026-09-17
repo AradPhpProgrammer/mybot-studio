@@ -27,7 +27,7 @@
 Установите Git и после миграции ветки выполните:
 
 ```bash
-git clone --branch main https://github.com/AradPhpProgrammer/mybot-studio.git
+git clone --branch master https://github.com/AradPhpProgrammer/mybot-studio.git
 cd mybot-studio
 ```
 
