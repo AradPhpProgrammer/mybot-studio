@@ -21,6 +21,18 @@ def test_env_fallback_and_no_proxy(monkeypatch):
         assert get_system_detected_proxy() == 'socks5://127.0.0.1:1080'
 
 
+def test_get_api_session_through_bot_add_path_does_not_raise():
+    # The real bot-add path builds a session before any Telegram call.
+    from app.telegram.bot_manager import BotManager
+    manager = BotManager()
+    try:
+        session = manager.get_api_session(cf_worker_url=None, proxy_url=None, db_proxy_url=None)
+    except NameError as exc:
+        raise AssertionError(f'bot-add proxy detection crashed: {exc}')
+    finally:
+        pass
+
+
 def test_missing_stdlib_import_does_not_raise(monkeypatch):
     # The function reads os.environ on the no-proxy path; guard the real failure mode.
     import app.telegram.bot_manager as bm
