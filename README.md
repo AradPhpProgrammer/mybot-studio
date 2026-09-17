@@ -4,7 +4,7 @@ A self-hosted visual Telegram bot builder with a ReactFlow canvas, FastAPI backe
 
 [English](README.md) · [فارسی](README.fa.md) · [العربية](docs/README.ar.md) · [Русский](docs/README.ru.md)
 
-> **v0.2 — prerelease, not a stable release.** These instructions target `main` after the v0.2 merge and default-branch migration. Until that migration is published, the `main` clone command is not available; do not silently substitute `master`. Back up existing data before testing.
+> **v0.2 — beta prerelease.** Clone from the `master` default branch (or the `0.2` development branch). Back up existing data before testing.
 
 ## What's new in v0.2
 
@@ -24,7 +24,7 @@ Each send has **one `reply_markup`**: inline and reply markup cannot be combined
 
 ### Get the prerelease source
 
-Install Git, then clone the intended `main` branch after migration:
+Install Git, then clone the `master` default branch:
 
 ```bash
 git clone --branch master https://github.com/AradPhpProgrammer/mybot-studio.git
