@@ -32,7 +32,7 @@ async function setup(browser,{width=1600,height=1100,theme='light',lang='en'}={}
   await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
  });
  await page.addInitScript(({bot,lang,theme})=>{for(const[k,v]of Object.entries({mybot_token:'QA_FIXTURE_NOT_A_CREDENTIAL',mybot_view:'studio',mybot_current_bot_id:String(bot.id),mybot_current_bot:JSON.stringify(bot),mybot_lang:lang,mybot_theme:theme}))localStorage.setItem(k,v)}, {bot,lang,theme});
- await page.goto('http://127.0.0.1:5173');
+ await page.goto(process.env.MYBOT_QA_URL || 'http://127.0.0.1:23568');
  await page.locator('.react-flow__node[data-id="kb"]').waitFor();
  await page.waitForTimeout(500);
  const panel=page.locator('.telegram-mockup');

@@ -88,12 +88,12 @@ def test_backend_requires_http_health(launcher, http_server, status, content_typ
     assert launcher.http_ready("127.0.0.1", http_server.server_port, backend=True) is healthy
 
 
-@pytest.mark.parametrize("occupied", [8000, 5173])
+@pytest.mark.parametrize("occupied", [23567, 23568])
 def test_conflict_fails_without_stopping_existing_services(launcher, monkeypatch, capsys, occupied):
     monkeypatch.setattr(
         launcher,
-        "http_ready",
-        lambda host, port, backend=False, timeout=2.0: port == occupied,
+        "port_open",
+        lambda host, port, timeout=2.0: port == occupied,
     )
     assert launcher.main() == 1
     launcher.subprocess.Popen.assert_not_called()
@@ -104,7 +104,7 @@ def test_conflict_fails_without_stopping_existing_services(launcher, monkeypatch
 
 def test_startup_waits_for_both_services_before_ready_or_browser(launcher, monkeypatch, capsys):
     events = []
-    processes = [Mock(), Mock(), Mock()]
+    processes = [Mock(), Mock()]
     for process in processes:
         process.poll.return_value = None
     def spawn(*args, **kwargs):
@@ -113,25 +113,25 @@ def test_startup_waits_for_both_services_before_ready_or_browser(launcher, monke
     monkeypatch.setattr(launcher.subprocess, "Popen", spawn)
     def health(host, port, **kwargs):
         assert "is ready!" not in capsys.readouterr().out
-        assert events.count("spawn") == (2 if port == 8000 else 3)
+        assert events.count("spawn") == (1 if port == 23567 else 2)
         events.append(f"health:{port}")
         return True
     monkeypatch.setattr(launcher, "http_ready", health)
     def browser(url):
-        assert events[-1] == "health:5173"
+        assert events[-1] == "health:23568"
         assert "is ready!" in capsys.readouterr().out
         events.append("browser")
         raise KeyboardInterrupt
     monkeypatch.setattr(launcher.webbrowser, "open", browser)
     assert launcher.start_services() == 130
-    assert events == ["spawn", "spawn", "health:8000", "spawn", "health:5173", "browser"]
+    assert events == ["spawn", "health:23567", "spawn", "health:23568", "browser"]
     for process in processes:
         assert process.terminate.called or launcher.subprocess.run.called
 
 
-@pytest.mark.parametrize("failed_index", [0, 1, 2])
+@pytest.mark.parametrize("failed_index", [0, 1])
 def test_child_exit_during_startup_is_failure(launcher, monkeypatch, capsys, failed_index):
-    processes = [Mock(), Mock(), Mock()]
+    processes = [Mock(), Mock()]
     for i, process in enumerate(processes):
         process.poll.return_value = 7 if i == failed_index else None
     monkeypatch.setattr(launcher.subprocess, "Popen", Mock(side_effect=processes))
@@ -143,7 +143,7 @@ def test_child_exit_during_startup_is_failure(launcher, monkeypatch, capsys, fai
     assert "is ready!" not in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("failed_index", [0, 1, 2])
+@pytest.mark.parametrize("failed_index", [0, 1])
 def test_spawn_failure_cleans_up_started_services(launcher, monkeypatch, failed_index):
     processes = [Mock(), Mock()]
     for process in processes:
@@ -155,7 +155,7 @@ def test_spawn_failure_cleans_up_started_services(launcher, monkeypatch, failed_
         assert process.terminate.called or launcher.subprocess.run.called
 
 
-@pytest.mark.parametrize("port", [8000, 5173])
+@pytest.mark.parametrize("port", [23567, 23568])
 def test_health_timeout_never_reports_ready(launcher, monkeypatch, capsys, port):
     process = Mock()
     process.poll.return_value = None
@@ -169,13 +169,13 @@ def test_health_timeout_never_reports_ready(launcher, monkeypatch, capsys, port)
 
 @pytest.mark.parametrize("exit_code", [0, 9])
 def test_runtime_child_exit_is_not_success(launcher, monkeypatch, capsys, exit_code):
-    processes = [Mock(), Mock(), Mock()]
+    processes = [Mock(), Mock()]
     for process in processes:
         process.poll.return_value = None
     monkeypatch.setattr(launcher.subprocess, "Popen", Mock(side_effect=processes))
     monkeypatch.setattr(launcher, "http_ready", Mock(return_value=True))
     def browser(url):
-        processes[2].poll.return_value = exit_code
+        processes[1].poll.return_value = exit_code
     monkeypatch.setattr(launcher.webbrowser, "open", browser)
     assert launcher.start_services() == 1
     output = capsys.readouterr().out
@@ -197,3 +197,24 @@ def test_check_is_dependency_only_even_when_ports_occupied(launcher, monkeypatch
     assert launcher.main() == 0
     probe.assert_not_called()
     launcher.subprocess.Popen.assert_not_called()
+
+
+def test_no_inert_worker_process_and_requested_ports(launcher, monkeypatch):
+    commands = []
+    def spawn(command, **kwargs):
+        commands.append(command)
+        process = Mock()
+        process.poll.return_value = 0 if "app.bot_worker" in command else None
+        return process
+    monkeypatch.setattr(launcher.subprocess, "Popen", spawn)
+    monkeypatch.setattr(launcher, "http_ready", lambda *a, **k: True)
+    def ready(url):
+        assert url == "http://127.0.0.1:23568"
+        raise KeyboardInterrupt
+    monkeypatch.setattr(launcher.webbrowser, "open", ready)
+    assert launcher.start_services() == 130
+    assert len(commands) == 2
+    assert "app.main:app" in commands[0]
+    assert "23567" in commands[0]
+    assert "23568" in commands[1]
+    assert all("app.bot_worker" not in cmd for cmd in commands)

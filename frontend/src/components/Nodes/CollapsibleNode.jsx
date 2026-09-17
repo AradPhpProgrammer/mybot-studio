@@ -4,13 +4,17 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useI18n } from '../../locales/i18n';
 
 // Presentation state only: collapsing never rewrites graph data or connections.
-const collapsedByNode = new Map();
+const FOLD_KEY = 'mybot_node_folds';
+let collapsedByNode = (() => { try { return new Map(Object.entries(JSON.parse(localStorage.getItem(FOLD_KEY) || '{}'))); } catch { return new Map(); } })();
+const WIDTH_KEY = 'mybot_node_fold_widths';
+const widthsByNode = (() => { try { return JSON.parse(localStorage.getItem(WIDTH_KEY) || '{}'); } catch { return {}; } })();
+const persistFolds = () => { try { localStorage.setItem(FOLD_KEY, JSON.stringify(Object.fromEntries(collapsedByNode))); } catch {} };
 
 export function collapsibleNode(Component) {
   return function CollapsibleNode(props) {
     const { t } = useI18n();
     const [collapsed, setCollapsed] = useState(() => collapsedByNode.get(props.id) || false);
-    const [width, setWidth] = useState(null);
+    const [width, setWidth] = useState(() => widthsByNode[props.id] || null);
     const content = useRef(null);
     const updateInternals = useUpdateNodeInternals();
     const previousCollapsed = useRef(collapsed);
@@ -31,8 +35,8 @@ export function collapsibleNode(Component) {
       <button type="button" data-node-collapse aria-expanded={!collapsed}
         aria-label={t(collapsed ? 'canvas.expand_node' : 'canvas.collapse_node')}
         title={t(collapsed ? 'canvas.expand_node' : 'canvas.collapse_node')}
-        className="nodrag nopan node-fold-toggle bg-transparent border-0 text-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus"
-        onClick={event => { event.stopPropagation(); if (!collapsed) setWidth(content.current.offsetWidth); setCollapsed(value => { collapsedByNode.set(props.id, !value); return !value; }); }}>
+        className="nodrag nopan node-fold-toggle bg-surface-secondary border border-border text-muted hover:text-foreground hover:bg-surface-tertiary focus-visible:ring-2 focus-visible:ring-focus node-fold-toggle-shadow-none"
+        onClick={event => { event.stopPropagation(); if (!collapsed) { const nextWidth = content.current.offsetWidth; setWidth(nextWidth); widthsByNode[props.id] = nextWidth; try { localStorage.setItem(WIDTH_KEY, JSON.stringify(widthsByNode)); } catch {} } setCollapsed(value => { collapsedByNode.set(props.id, !value); persistFolds(); return !value; }); }}>
         {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
       </button>
     </div>;

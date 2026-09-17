@@ -20,7 +20,7 @@ const assert = require('node:assert/strict');
     localStorage.setItem('mybot_lang','en');
     localStorage.setItem('mybot_theme','dark');
   },bot);
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto(process.env.MYBOT_QA_URL || 'http://127.0.0.1:23568');
   const label=page.locator('.react-flow__node-action_answer_callback label').filter({has:page.locator('input[type=checkbox]')});
   await label.waitFor();
   const result=await label.evaluate(el=>{

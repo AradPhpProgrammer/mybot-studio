@@ -9,7 +9,7 @@ const assert = require('node:assert/strict');
    const page=await browser.newPage({viewport:{width:800,height:700}});
    const errors=[];page.on('pageerror',e=>errors.push(e.message));
    await page.route('**/__node-isolation?*',r=>r.fulfill({contentType:'text/html',body:'<html><body><div id="root"></div><script type="module">import RefreshRuntime from "/@react-refresh"; RefreshRuntime.injectIntoGlobalHook(window); window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>type=>type;window.__vite_plugin_react_preamble_installed__=true; await import("/scripts/node-isolation.jsx");</script></body></html>'}));
-   await page.goto(`http://127.0.0.1:5173/__node-isolation?theme=${theme}&node=${node}`);
+   await page.goto(`${process.env.MYBOT_QA_URL || 'http://127.0.0.1:23568'}/__node-isolation?theme=${theme}&node=${node}`);
    const text=page.locator('textarea');await text.waitFor();
    assert.equal(await page.getByTestId('dirty').innerText(),'clean');
    await text.fill('Changed isolated text');

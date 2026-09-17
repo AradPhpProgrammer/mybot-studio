@@ -9,7 +9,7 @@ const assert=require('node:assert/strict');
  const tr=require(`../src/locales/${lang}.json`);const t=k=>k.split('.').reduce((v,p)=>v[p],tr);
  await page.route('**/api/**',route=>route.fulfill({contentType:'application/json',body:JSON.stringify(new URL(route.request().url()).pathname==='/api/bots'?[{id:1,name:'QA mobile dashboard',username:'qa_fixture',is_active:false,settings:{}}]:[])}));
  await page.addInitScript(lang=>{localStorage.setItem('mybot_token','QA_FIXTURE');localStorage.setItem('mybot_view','dashboard');localStorage.setItem('mybot_lang',lang);localStorage.setItem('mybot_theme','dark')},lang);
- await page.goto('http://127.0.0.1:5173');
+ await page.goto(process.env.MYBOT_QA_URL || 'http://127.0.0.1:23568');
  const refresh=page.getByTitle(t('dashboard.refresh_bot'),{exact:true});await refresh.waitFor();
  const state=await refresh.evaluate(el=>{let opacity=1;for(let p=el;p;p=p.parentElement) opacity*=Number(getComputedStyle(p).opacity);const r=el.getBoundingClientRect();return {opacity,x:r.x,right:r.right,viewport:innerWidth,overflow:document.documentElement.scrollWidth>innerWidth}});
  assert.ok(state.opacity>0.9,JSON.stringify(state));

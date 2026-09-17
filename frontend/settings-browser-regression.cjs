@@ -1,4 +1,4 @@
-// Real browser/component, isolated API fixtures only. Run with Vite on port 5173.
+// Real browser/component, isolated API fixtures only. Run with Vite on port 23568.
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'C:/Users/ARAD/AppData/Local/Temp/mybot-browser-qa/node_modules/playwright');
 const assert = require('node:assert/strict');
 const en = require('./src/locales/en.json');
@@ -28,7 +28,7 @@ const t = p => p.split('.').reduce((v,k)=>v[k], en);
   localStorage.setItem('mybot_view','studio');localStorage.setItem('mybot_current_bot_id',String(bot.id));
   localStorage.setItem('mybot_current_bot',JSON.stringify(bot));localStorage.setItem('mybot_lang','en');
  },bot);
- await page.goto(process.env.MYBOT_QA_URL || 'http://127.0.0.1:5173');
+ await page.goto(process.env.MYBOT_QA_URL || 'http://127.0.0.1:23568');
  const open=async()=>{await page.mouse.move(700,2);await page.getByRole('button',{name:t('navbar.bot_settings'),exact:true}).click();await page.locator('#bot-display-name').waitFor();};
  const releaseSchema=async()=>{assert.ok(pendingSchema);await pendingSchema.fulfill({status:200,contentType:'application/json',body:JSON.stringify({database_file:'fixture_delayed.db',subscribers_count:7,tracked_fields:['telegram_id','chat_id','custom_variables']})});pendingSchema=null;};
  await open();

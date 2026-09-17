@@ -27,8 +27,8 @@ PY = VENV / ("python.exe" if os.name == "nt" else "python")
 PIP = VENV / ("python.exe" if os.name == "nt" else "python")
 
 HOST = "127.0.0.1"
-PORT = 8000
-FE_PORT = 5173
+PORT = 23567
+FE_PORT = 23568
 SECRET_PATH = "panel_adm_x9a2k"
 ADMIN_USER = "admin"
 ADMIN_PASS = "admin1234"
@@ -227,7 +227,7 @@ def main():
     # STEP 6: Never stop services we did not start.
     # --------------------------------------------------------------
     for port in (PORT, FE_PORT):
-        if http_ready(HOST, port, backend=False, timeout=0.5):
+        if port_open(HOST, port, timeout=0.5):
             err(f"Port {port} is already in use. Stop that service yourself or use its existing UI.")
             return 1
 
@@ -266,7 +266,8 @@ def start_services():
         raise RuntimeError(f"{name} did not become healthy within 15 checks.")
 
     try:
-        spawn([str(PY), "-m", "app.bot_worker"], BACKEND, "Bot Worker")
+        # app.main lifespan owns polling workers; bot_worker is not a CLI.
+        info("Bot polling is managed by the Backend API.")
         spawn([str(PY), "-m", "uvicorn", "app.main:app", "--host", HOST,
                "--port", str(PORT), "--reload"], BACKEND, "Backend API")
         wait_ready(PORT, "Backend", backend=True)

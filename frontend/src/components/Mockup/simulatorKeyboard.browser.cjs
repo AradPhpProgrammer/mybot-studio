@@ -23,7 +23,7 @@ const assert = require('node:assert/strict');
       await route.fulfill({json:data});
     });
     await page.addInitScript(bot=>{for(const[k,v]of Object.entries({mybot_token:'FIXTURE',mybot_view:'studio',mybot_current_bot_id:String(bot.id),mybot_current_bot:JSON.stringify(bot),mybot_lang:'en'}))localStorage.setItem(k,v)},bot);
-    await page.goto('http://127.0.0.1:5173');
+    await page.goto(process.env.MYBOT_QA_URL || 'http://127.0.0.1:23568');
     await page.getByRole('button', { name: tr.mockup.test_tab, exact: true }).click();
     const send = async messages => {
       response = { messages };

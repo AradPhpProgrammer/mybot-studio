@@ -215,18 +215,35 @@ body {
   cursor: grabbing !important;
 }
 
-/* Dark mode node styling */
-[data-theme="dark"] .react-flow__node > div,
-.dark .react-flow__node > div {
-  background-color: #0d1322 !important;
-  border-color: #1e293b !important;
-  color: #f8fafc !important;
+/* The fold shell is structural, not a second opaque card. */
+.react-flow__node,
+.react-flow__node > .node-fold-shell {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.react-flow__node .node-fold-content > div,
+.react-flow__node .node-fold-summary {
+  background: color-mix(in srgb, var(--surface) 88%, transparent) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: none !important;
+}
+.react-flow__node.selected .node-fold-content > div,
+.react-flow__node.selected .node-fold-summary {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+.studio-navbar.bg-surface\/90 {
+  background: color-mix(in srgb, var(--surface) 80%, transparent) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  box-shadow: none !important;
 }
 
-/* Node header bar (where title is and where user drags) -> Deep Black with crisp white text */
+/* Node header bar: translucent continuation of the glass body */
 [data-theme="dark"] .custom-drag-handle,
 .dark .custom-drag-handle {
-  background-color: #060913 !important;
+  background-color: color-mix(in srgb, #060913 62%, transparent) !important;
   border-bottom: 1px solid #1e293b !important;
   color: #ffffff !important;
 }
@@ -245,7 +262,7 @@ body {
 .dark .react-flow__node input,
 .dark .react-flow__node textarea,
 .dark .react-flow__node select {
-  background-color: #1e293b !important;
+  background-color: color-mix(in srgb, #1e293b 72%, transparent) !important;
   color: #f1f5f9 !important;
   border: 1px solid #334155 !important;
 }
@@ -260,7 +277,6 @@ body {
 .dark .react-flow__node input:focus,
 .dark .react-flow__node textarea:focus,
 .dark .react-flow__node select:focus {
-  border-color: #3b82f6 !important;
   outline: none !important;
 }
 [data-theme="dark"] .react-flow__node input::placeholder,
@@ -498,14 +514,18 @@ body {
 
 @media (min-width: 901px) and (hover: hover) { .canvas-touch-add { display: none !important; } }
 
+/* No visible focus box for text inputs anywhere in the app (buttons keep focus-visible rings). */
+input:focus-visible, input:focus { outline: none !important; }
+textarea:focus-visible, textarea:focus { outline: none !important; }
+
 /* Keep keyboard labels transparent even under global form styles. */
 [data-keyboard-editor] input[dir="auto"] { background: transparent !important; color: var(--foreground); }
 .keyboard-mode-select { appearance: none; padding-inline-end: 26px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238894a8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 8px center; }
 [dir="rtl"] .keyboard-mode-select { background-position:left 8px center; }
 
 .node-fold-shell { position: relative; padding-bottom: 16px; }
-.node-fold-toggle { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 40px; height: 20px; display:flex; align-items:center; justify-content:center; border-radius: 7px; z-index: 2; }
+.node-fold-toggle { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 40px; height: 20px; display:flex; align-items:center; justify-content:center; border-radius: 7px; z-index: 2; box-shadow: none !important; }
 .node-folded .node-fold-content { position:absolute; inset:0 0 16px; visibility:hidden; pointer-events:none; }
-.node-folded .node-fold-content > div { height:100%; }
+.node-folded .node-fold-content > div { height:100%; min-width:0 !important; width:100% !important; }
 .node-folded .react-flow__handle { visibility:visible; pointer-events:auto; }
 .node-fold-summary { min-height:62px; max-width:100%; }

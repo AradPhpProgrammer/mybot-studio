@@ -29,7 +29,7 @@ fs.mkdirSync(out, { recursive: true });
   await page.addInitScript(({bot,lang,theme})=>{
    for(const [k,v] of Object.entries({mybot_token:'QA_FIXTURE_NOT_A_CREDENTIAL',mybot_view:'studio',mybot_current_bot_id:String(bot.id),mybot_current_bot:JSON.stringify(bot),mybot_lang:lang,mybot_theme:theme})) localStorage.setItem(k,v);
   },{bot,lang,theme});
-  await page.goto('http://127.0.0.1:5173');
+  await page.goto(process.env.MYBOT_QA_URL || 'http://127.0.0.1:23568');
   await page.locator('.react-flow__node[data-id="kb"]').waitFor();
   assert.equal(await page.locator('.react-flow').evaluate((el,theme)=>el.classList.contains(theme),theme),true);
   // Select the node through its real React onClick handler; subsequent edits use pointer actions.

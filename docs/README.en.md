@@ -47,7 +47,7 @@ bash start-local.sh
 
 Requirements: Python **3.10+** with `pip` and `venv`, and Node.js **18+** with npm (Vite 5 requirement); a current supported Node LTS is recommended. Put the tools on PATH. `uv` is optional, with pip as fallback. Downloads need network access; live bots need access to Telegram. Self-hosted does not mean Telegram works offline.
 
-Both wrappers invoke **`start-local.py`**. It creates `.env` if absent, prepares `backend/.venv`, installs Python dependencies, smoke-checks backend imports and installs frontend dependencies if `node_modules` is absent. Normal startup launches the worker and API, waits for the API at `127.0.0.1:8000`, then starts Vite (normally `http://localhost:5173`). Read terminal errors if startup fails; do not start only the frontend to bypass an API failure. Keep port 8000 free: the launcher may terminate an existing listener there.
+Both wrappers invoke **`start-local.py`**. It creates `.env` if absent, prepares `backend/.venv`, installs Python dependencies, smoke-checks backend imports and installs frontend dependencies if `node_modules` is absent. Normal startup launches the API, waits for it at `127.0.0.1:23567`, then starts Vite (normally `http://localhost:23568`). Read terminal errors if startup fails; do not start only the frontend to bypass an API failure. Keep port 8000 free: the launcher may terminate an existing listener there.
 
 Dependency/import check only:
 

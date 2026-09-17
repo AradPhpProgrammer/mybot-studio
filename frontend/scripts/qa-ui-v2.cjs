@@ -12,7 +12,7 @@ for(const [theme,lang,width] of [['light','en',1500],['dark','fa',1500],['light'
  await page.route('**/api/**',async r=>{const p=new URL(r.request().url()).pathname;let data={};if(p==='/api/bots')data=[bot];else if(p==='/api/flows/987654'){if(r.request().method()==='POST')flow=r.request().postDataJSON();data=flow;}else if(p.endsWith('/catalog'))data=[];await r.fulfill({json:data});});
  await page.route('**/media/broken.png',r=>r.fulfill({status:404,body:''}));
  await page.addInitScript(({bot,theme,lang,scope})=>{for(const[k,v]of Object.entries({mybot_token:'FIXTURE',mybot_view:scope==='avatar'?'dashboard':'studio',mybot_current_bot_id:String(bot.id),mybot_current_bot:JSON.stringify(bot),mybot_theme:theme,mybot_lang:lang}))localStorage.setItem(k,v)},{bot,theme,lang,scope});
- await page.goto('http://127.0.0.1:5173');
+ await page.goto('http://127.0.0.1:23568');
  if(scope==='avatar'){
   const img=page.locator('img[title="'+t('dashboard.upload_photo')+'"]');await img.waitFor();await page.waitForFunction(()=>[...document.images].some(i=>i.getAttribute('src')==='/default-bot.png'&&i.naturalWidth>0));assert.equal(await img.getAttribute('alt'),'');
  }else{

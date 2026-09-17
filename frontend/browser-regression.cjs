@@ -30,7 +30,7 @@ const key = p => p.split('.').reduce((v,k)=>v[k],en);
   localStorage.setItem('mybot_view','studio');localStorage.setItem('mybot_current_bot_id',String(bot.id));
   localStorage.setItem('mybot_current_bot',JSON.stringify(bot));localStorage.setItem('mybot_lang','en');localStorage.setItem('mybot_theme','light');
  },bot);
- await page.goto('http://127.0.0.1:5173');
+ await page.goto(process.env.MYBOT_QA_URL || 'http://127.0.0.1:23568');
  const text=page.locator('.react-flow__node[data-id="send"] textarea');
  await text.waitFor();
  await text.fill('Changed text');

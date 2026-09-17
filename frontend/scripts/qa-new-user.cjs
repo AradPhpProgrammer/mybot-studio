@@ -14,7 +14,7 @@ for(const [lang,theme,width] of [['en','light',1400],['fa','dark',390]]){
  else if(p.endsWith('/fonts'))data=[];
  await r.fulfill({status,json:data});});
  await page.addInitScript(({lang,theme})=>{localStorage.setItem('mybot_lang',lang);localStorage.setItem('mybot_theme',theme)},{lang,theme});
- await page.goto('http://127.0.0.1:5173');
+ await page.goto(process.env.MYBOT_QA_URL || 'http://127.0.0.1:23568');
  await page.locator('input[type=text]').fill('isolated-user');await page.locator('input[type=password]').fill('isolated-password');
  await page.getByRole('button',{name:t('login.login_btn'),exact:true}).click();await page.getByText('Isolated login rejection',{exact:true}).waitFor();assert.equal(await page.evaluate(()=>localStorage.getItem('mybot_token')),null);
  await page.getByRole('button',{name:t('login.login_btn'),exact:true}).click();await page.getByText(t('dashboard.no_profiles_title'),{exact:true}).waitFor();

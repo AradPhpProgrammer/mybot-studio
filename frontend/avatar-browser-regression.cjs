@@ -17,7 +17,7 @@ for(const lang of ['en','fa','ar','ru']){
  await r.fulfill({contentType:'application/json',body:JSON.stringify(data)});});
  await page.route('**/media/**',async r=>{if(r.request().url().endsWith('broken.png'))return r.fulfill({status:404,body:''});await r.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5uQAAAAASUVORK5CYII=','base64')});});
  await page.addInitScript(({bot,lang})=>{localStorage.setItem('mybot_token','TEST_FIXTURE');localStorage.setItem('mybot_view','studio');localStorage.setItem('mybot_current_bot_id',String(bot.id));localStorage.setItem('mybot_current_bot',JSON.stringify(bot));localStorage.setItem('mybot_lang',lang);},{bot,lang});
- await page.goto(process.env.MYBOT_QA_URL || 'http://127.0.0.1:5173');
+ await page.goto(process.env.MYBOT_QA_URL || 'http://127.0.0.1:23568');
  const open=async()=>{await page.mouse.move(500,2);await page.getByRole('button',{name:t('navbar.bot_settings'),exact:true}).click();await page.locator('#bot-username').waitFor();};
  await open();await page.waitForTimeout(200);
  const dialog=page.getByRole('dialog');
