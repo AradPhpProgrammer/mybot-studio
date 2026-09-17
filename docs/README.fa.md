@@ -27,7 +27,7 @@
 Git را نصب کنید و پس از انتقال شاخه، `main` را کلون کنید:
 
 ```bash
-git clone --branch main https://github.com/AradPhpProgrammer/mybot-studio.git
+git clone --branch master https://github.com/AradPhpProgrammer/mybot-studio.git
 cd mybot-studio
 ```
 
